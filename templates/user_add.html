@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add TG-user{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block content %}
+    <form class="change_form" method="post">
+        {% csrf_token %}
+        <h2>Add user</h2>
+        <div class="input">Name: <input name="name" required></div>
+        <div class="input">Phone number: <input name="phone" required></div>
+        <div class="input">Api_id: <input name="api_id" required></div>
+        <div class="input">Api_hash: <input name="api_hash" required></div>
+        <div class="input">Cloud password: <input name="password"></div>
+        <div class="input">Proxy: <input class="w320" name="proxy" required></div>
+        <div class="footer">
+            <a href="/user/" class="a_button">Cancel</a>
+            <button type="submit" class="action_button" name="index" value="0">Save</button>
+        </div>
+    </form>
+{% endblock %}

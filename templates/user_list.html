@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TG users{% endblock %}
+
+{% block scripts %}
+    <script defer="defer" src="{% static 'js/check_all.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <form class="list_form" method="post">
+        {% csrf_token %}
+        <div class="action">
+            <label>Action:
+            <select name="action">
+                <option value selected>------------</option>
+                <option value="delete_selected">Delete selected</option>
+            </select></label>
+            <button type="submit" class="action_button" name="index" value="1">Execute</button>
+            <span>Total users - {{ users|length }}</span>
+            <a href="/user/add" class="a_button">Add user</a>
+        </div>
+
+        <div class="list">
+        <table class="list_table" id="dataTable">
+            <thead>
+                <tr class="table_header center">
+                    <th class="cell w20"><input type="checkbox" id="ca_main" name="select_all" value="0"></th>
+                    <th class="cell w30" id="ca_counter">0</th>
+                    <th class="cell w160">Name</th>
+                    <th class="cell w100">Phone</th>
+                    <th class="cell w100">TG ID</th>
+                    <th class="cell w320">Proxy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr class="{% cycle 'row' 'row row_even' %}">
+                        <td class="center">
+                            <input type="checkbox" class="ca_checkbox" name="selected_item" value="{{ user.pk }}">
+                        </td>
+                        <td class="center">{{ forloop.counter }}.</td>
+                        <td class="cell"><a href="{{ user.pk }}/change">{{ user.name|truncatechars:30 }}</a></td>
+                        <td class="cell">{{ user.phone|truncatechars:20 }}</td>
+                        <td class="center">{{ user.tg_id }}</td>
+                        <td class="cell">{{ user.proxy|truncatechars:50 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </form>
+{% endblock %}

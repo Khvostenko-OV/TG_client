@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Deleting{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block content %}
+    <form class="delete_form" method="post">
+        {% csrf_token %}
+        <h1>Delete objects?</h1>
+        <h2>Total - {{ list|length }}</h2>
+        <span>{{ name }}:</span>
+        {% for obj in list %}
+            <input type="hidden" name="pk_list" type="hidden" value="{{ obj.pk }}">
+            {{ obj }},
+        {% endfor %}
+        <div class="footer">
+            <a href="javascript:history.back()" class="a_button">Cancel</a>
+            <button type="submit" class="delete_button" name="action" value="delete_confirm">Delete</button>
+        </div>
+    </form>
+{% endblock %}

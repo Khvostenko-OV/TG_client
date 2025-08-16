@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}TG groups{% endblock %}
+
+{% block scripts %}
+    <script defer="defer" src="{% static 'js/check_all.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <form class="list_form" method="post">
+        {% csrf_token %}
+        <div class="action">
+            Action:
+            <select name="action">
+                <option value selected>------------</option>
+                <option value="delete_selected">Delete selected</option>
+            </select>
+            <button type="submit" class="action_button" name="index" value="0">Execute</button>
+            <span>Total groups - {{ groups|length }}</span>
+        </div>
+
+        <div class="list">
+        <table class="list_table" id="dataTable">
+            <thead>
+                <tr class="table_header">
+                    <th class="cell w20"><input type="checkbox" id="ca_main" name="select_all" value="0"></th>
+                    <th class="cell w30" id="ca_counter">0</th>
+                    <th class="cell w140">Name</th>
+                    <th class="cell w80">TG ID</th>
+                    <th class="cell w400">Link</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in groups %}
+                    <tr class="{% cycle 'row' 'row row_even' %}">
+                        <td class="center">
+                            <input type="checkbox" class="ca_checkbox" name="selected_item" value="{{ group.pk }}">
+                        </td>
+                        <td class="center">{{ forloop.counter }}.</td>
+                        <td class="cell">{{ group.name|truncatechars:24 }}</td>
+                        <td class="center">{{ group.chat_id }}</td>
+                        <td class="cell">{{ group.chat_link|truncatechars:48 }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <div class="footer">
+            <label class="input_field">Name: <input name="group_name"></label>
+            <button type="submit" class="action_button" name="add_group" value="1">Add group</button>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Logs{% endblock %}
+
+{% block scripts %}{% endblock %}
+
+{% block content %}
+    <form class="change_form" method="post">
+        {% csrf_token %}
+        <div>
+            <button type="submit" class="action_button" name="action" value="delete">Clean</button>
+        </div>
+    </form>
+{% endblock %}

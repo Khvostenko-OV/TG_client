@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit TG-user{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block content %}
+    <form class="change_form" method="post">
+        {% csrf_token %}
+        <h2>Edit user '{{ user }}'</h2>
+        <div class="input">Name: <input name="name" value="{{ user.name }}" required></div>
+        <div class="input">Phone number: <input name="phone" value="{{ user.phone }}" required></div>
+        <div class="input">Api_id: <input name="api_id" value="{{ user.api_id }}" required></div>
+        <div class="input">Api_hash: <input name="api_hash" value="{{ user.api_hash }}" required></div>
+        <div class="input">Cloud password: <input name="password" value="{{ user.password }}"></div>
+        <div class="input">
+            Proxy: <input class="w320" name="proxy" value="{{ user.proxy }}" required>
+            <button type="submit" class="action_button" name="check_proxy" value="0">Check</button>
+        </div>
+
+        <div class="input">TG ID: {{ user.tg_id }}</div>
+        <div class="input">Device model: {{ user.device_model }}</div>
+        <div class="input">System version: {{ user.system_version }}</div>
+        <div class="input">App version: {{ user.app_version }}</div>
+        <div class="input">Language code: {{ user.lang_code }}</div>
+        <div class="input">System language code: {{ user.system_lang_code }}</div>
+
+        <div class="footer">
+            <a href="/user/" class="a_button">Cancel</a>
+            <button type="submit" class="action_button" name="index" value="0">Save</button>
+        </div>
+    </form>
+{% endblock %}

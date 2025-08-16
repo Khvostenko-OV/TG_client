@@ -1,0 +1,5 @@
+Django==5.2.4
+fake-agent==0.1.4
+psycopg2-binary==2.9.10
+requests==2.32.4
+Telethon==1.40.0

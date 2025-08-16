@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Tasks list{% endblock %}
+
+{% block scripts %}
+    <meta http-equiv="refresh" content="24">
+    <script defer="defer" src="{% static 'js/check_all.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <form class="list_form" method="post">
+        {% csrf_token %}
+        <div class="action">
+            <label>Action:
+            <select name="action">
+                <option value selected>------------</option>
+                <option value="delete_selected">Delete selected</option>
+            </select></label>
+            <button type="submit" class="action_button" name="index" value="1">Execute</button>
+            <span>Total tasks - {{ tasks|length }}</span>
+            <a href="/task/add" class="a_button">Add task</a>
+        </div>
+
+        <div class="list">
+        <table class="list_table" id="dataTable">
+            <thead>
+                <tr class="table_header center">
+                    <th class="cell w20"><input type="checkbox" id="ca_main" name="select_all" value="0"></th>
+                    <th class="cell w30" id="ca_counter">0</th>
+                    <th class="cell w120">Name</th>
+                    <th class="cell w120">Admin</th>
+                    <th class="cell w60">Groups</th>
+                    <th class="cell w60">Action</th>
+                    <th class="cell w60">Status</th>
+                    <th class="cell w60">Errors</th>
+                    <th class="cell w60">Received</th>
+                    <th class="cell w160">Execute</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                    <tr class="{% cycle 'row' 'row row_even' %}">
+                        <td class="center">
+                            <input type="checkbox" class="ca_checkbox" name="selected_item" value="{{ task.pk }}">
+                        </td>
+                        <td class="center">{{ forloop.counter }}.</td>
+                        <td class="cell"><a href="{{ task.pk }}/change">{{ task.name|truncatechars:20 }}</a></td>
+                        <td class="cell">{{ task.admin|truncatechars:20 }}</td>
+                        <td class="center">{{ task.groups_count }}</td>
+                        <td class="center">{{ task.action }}</td>
+                        <td class="center">{{ task.status }}</td>
+                        <td class="center">{{ task.errors }}</td>
+                        <td class="center">{{ task.found }}</td>
+                        <td class="center">
+                            {% if task.status == "CHECK" %}
+                                <input class="w80" name="confirm_code">
+                                <button type="submit" class="check_button" name="confirm" value="{{ task.pk }}">
+                                    Confirm
+                                </button>
+                            {% else %}
+                                <button type="submit" class="check_button" name="click_task" value="{{ task.pk }}">
+                                    {% for act in acts %}
+                                        {% if forloop.counter == forloop.parentloop.counter %}{{ act }}{% endif %}
+                                    {% endfor %}
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </form>
+{% endblock %}

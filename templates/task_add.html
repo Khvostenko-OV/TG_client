@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Create task{% endblock %}
+
+{% block scripts %}
+    <link href="{% static 'css/d_list.css' %}" rel="stylesheet">
+    <script defer="defer" src="{% static 'js/d_list.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+    <form class="change_form" method="post">
+        {% csrf_token %}
+        <h2>Create task</h2>
+        <div class="input">Name: <input name="name" required></div>
+
+        <div class="input">
+            Admin:
+            <select name="admin_id">
+                <option value="0">------------</option>
+                {% for admin in admins %}
+                    <option value="{{ admin.pk }}">{{ admin }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="input">
+            Action:
+            <select name="action">
+                {% for action in actions %}
+                    <option value="{{ action }}">{{ action }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="input">
+            Limit: <input type="number" class="w40" name="limit" value="1" min=1> messages
+        </div>
+        <div class="input">
+            Period: <input type="number" class="w40" name="period" value="0" min=0> hours
+        </div>
+
+
+        <div class="dl_container">
+            <div class="dl_list_header">
+                <label for="dl_list_1">Groups:</label>
+                <span id="dl_count_1">0</span>
+            </div>
+            <div class="dl_control"></div>
+            <div class="dl_list_header">
+                <label for="dl_list_2">To parse:</label>
+                <span id="dl_count_2">0</span>
+            </div>
+        </div>
+        <div class="dl_container input_label">
+            <div class="dl_list">
+                <select class="dl_select" name="groups_off" id="dl_list_1" multiple>
+                    {% for group in groups %}
+                        {% if group not in groups_in %}
+                            <option value="{{ group.pk }}">{{ group }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="dl_control">
+                <div class="dl_control_btn" id="dl_all_to_2">>></div>
+                <div class="dl_control_btn" id="dl_to_2">-></div>
+                <div class="dl_control_btn" id="dl_to_1"><-</div>
+                <div class="dl_control_btn" id="dl_all_to_1"><<</div>
+            </div>
+            <div class="dl_list">
+                <select class="dl_select" name="groups" id="dl_list_2" multiple>
+                    {% for group in groups_in %}
+                        <option value="{{ group.pk }}">{{ group }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="/task/" class="a_button">Cancel</a>
+            <button type="submit" class="action_button" name="index" value="0" id="submit">Save</button>
+        </div>
+    </form>
+{% endblock %}

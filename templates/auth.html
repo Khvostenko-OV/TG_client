@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign in</title>
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+</head>
+<body>
+    <form class="auth" method="post">
+        {% csrf_token %}
+        <h2>{{ message }}</h2>
+        <div class="input"><label style="margin: 0 auto;">Login: <input name="login"></label></div>
+        <div class="input"><label style="margin: 0 auto;">Password: <input type="password" name="psw"></label></div>
+        <div class="action">
+            <button type="submit" class="action_button" name="index" value="0">Enter</button>
+        </div>
+    </form>
+</body>
+</html>
