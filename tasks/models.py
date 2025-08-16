@@ -115,9 +115,6 @@ class Task(models.Model):
         try:
             if not self.admin:
                 raise Exception("No admin")
-            if not self.admin.password:
-                print("------------------")
-                raise Exception("No password")
             if not await self.admin.connect(bg_loop):
                 raise Exception("TG auth error")
 
@@ -144,7 +141,6 @@ class Task(models.Model):
             await self.asave()
             await Log.aset(f"Checking task '{self}' finished - OK")
         except Exception as e:
-            print("++++++++++++")
             self.status = TaskStatus.DRAFT
             self.errors = 1
             await self.asave()

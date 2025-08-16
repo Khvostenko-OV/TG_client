@@ -46,7 +46,7 @@ def task_check(task: Task):
     Log.set(f"Start checking task '{task}'")
 
     run_async_bg(task.async_check())
-#    sleep_bit(1)
+    sleep_bit(0.6)
 
     # asyncio.run_coroutine_threadsafe(task.async_check, bg_loop)
     # spawn = multiprocessing.get_context("spawn")
