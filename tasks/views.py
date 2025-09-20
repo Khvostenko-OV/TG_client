@@ -1,17 +1,16 @@
-import asyncio
-import multiprocessing
-
+from celery.contrib.abortable import AbortableAsyncResult
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 
 from TG_client.choices import TaskStatus, TASK_TODO, TaskAction
-from TG_client.settings import run_async_bg
+from TG_client.settings import Broker
 from TG_client.utils import dummy, sleep_bit
 from accounts.models import User, Confirmation
-from params.models import Log
+from params.models import Log, confirm_time
 from tasks.models import Task, TGgroup
+from tasks.tasks import task_run
 
 
 @login_required
@@ -36,37 +35,20 @@ def tasks_delete(pk_list: list):
     Log.set(f"{deleted} tasks(s) deleted")
 
 
-def task_check(task: Task):
-    if not task.fast_check(): return
-
-    task.status = TaskStatus.CHECK
-    task.errors = 0
-    task.found = 0
-    task.save()
-    Log.set(f"Start checking task '{task}'")
-
-    run_async_bg(task.async_check())
-    sleep_bit(0.6)
-
-    # asyncio.run_coroutine_threadsafe(task.async_check, bg_loop)
-    # spawn = multiprocessing.get_context("spawn")
-    # process = spawn.Process(target=task.sync_check)
-    # sleep_bit(3)
-    # process.daemon = True
-    # process.start()
-    # print(f"------ Start process '{task}', pid={process.pid}")
-
-
 def task_start(task: Task):
-    task.start()
+    task_run.delay(task.id)
+    sleep_bit(0.5)
 
 
 def task_stop(task: Task):
-    task.stop()
+    task_id = Broker.get(f"Task_id_{task.id}")
+    if task_id:
+        abort = AbortableAsyncResult(task_id)
+        abort.abort()
 
 
 task_action = {
-    TaskStatus.DRAFT: task_check,
+    TaskStatus.DRAFT: task_start,
     TaskStatus.CHECK: dummy,
     TaskStatus.READY: task_start,
     TaskStatus.RUN: task_stop,
@@ -88,6 +70,8 @@ def task_list(request):
             code = request.POST.get("confirm_code")
             if code:
                 Confirmation.objects.update_or_create(user=user, defaults={"code": code})
+        elif "action" in request.POST and request.POST["action"] == "change_limit":
+            confirm_time(request.POST["limit"])
         elif "selected_item" in request.POST:
             return render(request, "delete.html",
                           {"name": "Tasks",
@@ -102,6 +86,7 @@ def task_list(request):
     context = {
         "tasks": tasks,
         "acts": [TASK_TODO[t.status] for t in tasks],
+        "limit": confirm_time(),
         "lines": Log.get(0, 24),
         "menu": 3,
     }
@@ -163,7 +148,8 @@ def task_change(request, pk):
                ):
             return HttpResponseRedirect(reverse("tasks"))
 
-        task.stop()
+        if task.status in [TaskStatus.CHECK, TaskStatus.RUN]:
+            task_stop(task)
         if any([admin != task.admin, new_groups]):
             task.status = TaskStatus.DRAFT
         if name != task.name and not Task.get_by_name(name):
@@ -197,7 +183,7 @@ def groups_delete(pk_list: list):
     del_groups = TGgroup.objects.filter(pk__in=pk_list)
     deleted = del_groups.count()
     del_groups.delete()
-    Log.set(f"{deleted} group(s) deleted")
+    Log.set(f"{deleted} TG-group(s) deleted")
 
 
 @login_required
@@ -205,14 +191,15 @@ def group_list(request):
     messages = []
     if request.method == "POST":
         if "add_group" in request.POST and request.POST["group_name"]:
-            group, created = TGgroup.objects.get_or_create(name=request.POST["group_name"], )
+            link = request.POST["group_name"].split("/")[-1].strip()
+            group, created = TGgroup.objects.get_or_create(name=link)
             if created:
                 Log.set(f"TG-group '{group}' created")
             else:
-                messages.append({"type": "w", "text": f"TG-group '{request.POST['group_name']}' already exists!"})
+                messages.append({"type": "w", "text": f"TG-group '{group}' already exists!"})
         elif "selected_item" in request.POST:
             return render(request, "delete.html",
-                          {"name": "Groups",
+                          {"name": "TG-groups",
                            "list": TGgroup.objects.filter(pk__in=request.POST.getlist("selected_item"))
                            })
         elif request.POST["action"] == "delete_confirm":
@@ -224,4 +211,4 @@ def group_list(request):
         "lines": Log.get(0, 24),
         "menu": 2,
     }
-    return render(request, "group_list.html", context)
+    return render(request, "tg_group_list.html", context)

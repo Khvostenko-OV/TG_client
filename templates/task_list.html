@@ -20,6 +20,9 @@
             <button type="submit" class="action_button" name="index" value="1">Execute</button>
             <span>Total tasks - {{ tasks|length }}</span>
             <a href="/task/add" class="a_button">Add task</a>
+            <label> Confirm time <input type="number" class="w40" name="limit" value={{ limit }} min=1> sec</label>
+            <button type="submit" class="action_button" name="action" value="change_limit">Change</button>
+
         </div>
 
         <div class="list">

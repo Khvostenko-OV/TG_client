@@ -2,13 +2,14 @@ import asyncio
 from time import sleep
 
 from django.db import models
+from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from telethon import TelegramClient
-from telethon.errors import SessionPasswordNeededError, UserNotParticipantError, ChannelPrivateError
+from telethon.errors import SessionPasswordNeededError, UserNotParticipantError, ChannelPrivateError, PhoneCodeInvalidError
 from telethon.sessions import StringSession
-from telethon.tl.functions.channels import GetParticipantRequest
+from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
 
-from TG_client.utils import proxy_check, generate_device_info
+from TG_client.utils import proxy_check, generate_device_info, sleep_bit
 from params.models import Log, aconfirm_time
 
 
@@ -36,7 +37,7 @@ class User(models.Model):
 
     api_id = models.CharField("ApiId", max_length=64, default="")
     api_hash = models.CharField("ApiHash", max_length=64, default="")
-    tg_id = models.IntegerField("TG ID", default=0)
+    tg_id = models.CharField("TG ID", max_length=64, default="")
 
     phone = models.CharField("Phone", max_length=16, default="")
     password = models.CharField("Cloud Password", max_length=32, default="")
@@ -52,8 +53,8 @@ class User(models.Model):
     created_at = models.DateTimeField("Created at", auto_now_add=True, null=True)
 
     class Meta:
-        verbose_name = "User"
-        verbose_name_plural = "Users"
+        verbose_name = "TG-user"
+        verbose_name_plural = "TG-users"
         ordering = ["pk"]
 
     def __init__(self, *args, **kwargs):
@@ -117,7 +118,7 @@ class User(models.Model):
             await self.asave()
         return True
 
-    async def connect(self, loop: asyncio.AbstractEventLoop):
+    async def connect(self, loop: asyncio.AbstractEventLoop) -> bool:
         if self.is_active(): return True
         if not await self.async_check(): return False
 
@@ -167,9 +168,14 @@ class User(models.Model):
             try:
                 await self.client.sign_in(phone=self.phone, code=confirm.code)
 
+            except PhoneCodeInvalidError:
+                await Log.aset(f"[{self}] The phone code entered was invalid!")
+                await confirm.adelete()
+                return False
             except SessionPasswordNeededError:
                 if not self.password:
                     await Log.aset(f"[{self}] No cloud-password!")
+                    await confirm.adelete()
                     return False
                 # https://github.com/AbirHasan2005/TelegramScraper/issues/7
                 await Log.aset(f"[{self}] Sending cloud-password")
@@ -183,7 +189,9 @@ class User(models.Model):
                 return False
 
         me = await self.client.get_me()
-        self.tg_id = me.id
+        print(f"----- Connected me={me.id}")
+        sleep_bit()
+        self.tg_id = str(me.id)
         await self.asave()
         await Log.aset(f"[{self}] Auth OK")
         return True
@@ -198,6 +206,7 @@ class User(models.Model):
 
         try:
             await self.client(GetParticipantRequest(channel=channel, participant="me"))
+            sleep_bit()
         except UserNotParticipantError:
             return "Not member"
         except ChannelPrivateError:
@@ -206,3 +215,37 @@ class User(models.Model):
             return f"Error: [{self}] - {e}"
 
         return "Member"
+
+    async def join_channel(self, invite: str):
+        if not self.client: return
+        entity = None
+        try:
+            if invite.startswith("+"):
+                result = await self.client(ImportChatInviteRequest(invite.lstrip("+")))
+                entity = result.chats[0]
+            else:
+                entity = await self.client.get_entity(invite)
+                await self.client(JoinChannelRequest(entity))
+            sleep_bit()
+        except Exception as e:
+            await Log.aset(f"[{self}] Error: {e}")
+            return
+
+        return entity
+
+    async def parse_channel(self, chat_id, limit=1) -> list:
+        if not self.client:
+            await Log.aset(f"[{self}] No connection!")
+            return []
+        dialogs = await self.client.get_dialogs()
+        sleep_bit()
+        for dlg in dialogs:
+            if str(dlg.entity.id) == chat_id:
+                entity = dlg.entity
+                break
+        else:
+            await Log.aset(f"[{self}] is not member of TG-group id={chat_id}")
+            return []
+        res = await self.client.get_messages(entity, limit=limit)
+        sleep_bit()
+        return res

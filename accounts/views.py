@@ -21,33 +21,27 @@ def sign_in(request):
                 login(request, user)
                 return redirect(next_page, permanent=True)
             else:
-                return render(request, "auth.html", {"message": "Bad pair login/password!"})
+                return render(request, "auth.html", {"message": "Invalid pair login/password!"})
 
-    return render(request, "auth.html", {"message": "Enter login, password"})
+    return render(request, "auth.html", {"message": "Input login and password"})
 
 
-def users_delete(pk_list: list):
+def tg_users_delete(pk_list: list):
     del_users = User.objects.filter(pk__in=pk_list)
     deleted = del_users.count()
     del_users.delete()
-    Log.set(f"{deleted} user(s) deleted")
+    Log.set(f"{deleted} TG-user(s) deleted")
 
 
 @login_required
-def user_list(request):
+def tg_user_list(request):
 
     if request.method == "POST":
-        if "check_user" in request.POST:
-            user = User.objects.get(pk=request.POST["check_user"])
-            user.fast_check()
-        elif "selected_item" in request.POST:
+        if "selected_item" in request.POST:
             users = User.objects.filter(pk__in=request.POST.getlist("selected_item"))
-            if request.POST["action"] == "check_selected":
-                [user.fast_check() for user in users]
-            elif request.POST["action"] == "delete_selected":
-                return render(request, "delete.html", {"name": "ВК-юзеры", "list": users})
+            return render(request, "delete.html", {"name": "TG-users", "list": users})
         elif request.POST["action"] == "delete_confirm":
-            users_delete(request.POST.getlist("pk_list"))
+            tg_users_delete(request.POST.getlist("pk_list"))
 
     context = {
         "users": User.objects.all(),
@@ -58,7 +52,7 @@ def user_list(request):
 
 
 @login_required
-def user_add(request):
+def tg_user_add(request):
     messages = []
     if request.method == "POST":
         user, created = User.objects.get_or_create(
@@ -73,17 +67,17 @@ def user_add(request):
         )
         if created:
             Log.set(f"TG-user '{user}' created")
-            return HttpResponseRedirect(reverse("users"))
+            return HttpResponseRedirect(reverse("tg_users"))
         else:
-            messages.append({"type": "w", "text": f"User '{user}' already exists!"})
+            messages.append({"type": "w", "text": f"TG-user '{user}' already exists!"})
 
-    return render(request, "user_add.html", {"messages": messages, "menu": 1})
+    return render(request, "tg_user_add.html", {"messages": messages, "menu": 1})
 
 
 @login_required
-def user_change(request, pk):
+def tg_user_change(request, pk):
     user = User.get(pk)
-    if not user: return HttpResponseRedirect(reverse("users"))
+    if not user: return HttpResponseRedirect(reverse("tg_users"))
 
     messages = []
     if request.method == "POST":
@@ -116,11 +110,11 @@ def user_change(request, pk):
                 user.proxy = proxy
                 user.save()
                 Log.set(f"TG-user '{user}' changed")
-            return HttpResponseRedirect(reverse("users"))
+            return HttpResponseRedirect(reverse("tg_users"))
 
     context = {
         "user": user,
         "messages": messages,
         "menu": 1,
     }
-    return render(request, "user_change.html", context)
+    return render(request, "tg_user_change.html", context)

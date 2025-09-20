@@ -9,7 +9,7 @@
 {% block content %}
     <form class="delete_form" method="post">
         {% csrf_token %}
-        <h1>Delete objects?</h1>
+        <h1>Delete objects forever?</h1>
         <h2>Total - {{ list|length }}</h2>
         <span>{{ name }}:</span>
         {% for obj in list %}

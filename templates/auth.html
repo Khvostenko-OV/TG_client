@@ -6,15 +6,16 @@
     <meta charset="UTF-8">
     <title>Sign in</title>
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    <link rel="icon" href="{% static 'img/192.png' %}" type="image/png">
 </head>
-<body>
+<body style="background-image: url('/static/img/Logo1.jpg'); background-repeat: no-repeat">
     <form class="auth" method="post">
         {% csrf_token %}
         <h2>{{ message }}</h2>
-        <div class="input"><label style="margin: 0 auto;">Login: <input name="login"></label></div>
-        <div class="input"><label style="margin: 0 auto;">Password: <input type="password" name="psw"></label></div>
+        <div class="input"><label style="margin: 0 auto;">Логин: <input name="login"></label></div>
+        <div class="input"><label style="margin: 0 auto;">Пароль: <input type="password" name="psw"></label></div>
         <div class="action">
-            <button type="submit" class="action_button" name="index" value="0">Enter</button>
+            <button type="submit" class="action_button" name="index" value="0">Войти</button>
         </div>
     </form>
 </body>

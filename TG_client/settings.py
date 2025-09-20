@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-import threading
-import asyncio
+# import threading
+# import asyncio
+import redis
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,7 +27,7 @@ SECRET_KEY = "django-insecure-i+h84qno-^b8t$145*_$zj3xmfoxr^kpy%s1(so08)gb(&t-o1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -38,6 +39,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_celery_beat",
+
     "accounts.apps.AccountsConfig",
     "params",
     "tasks",
@@ -58,11 +61,11 @@ ROOT_URLCONF = "TG_client.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": ["templates"]
-        ,
+        "DIRS": ["templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
+                "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
@@ -131,26 +134,103 @@ STATICFILES_DIRS = [BASE_DIR / "static", ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Telegram
-BIT = 0.2
-CONFIRM_TIME = 120
+# redis
+REDIS_HOST = "127.0.0.1"
+REDIS_PORT = "6379"
+REDIS_PASSWORD = None
 
+Broker = redis.StrictRedis(
+    host=REDIS_HOST,
+    port=int(REDIS_PORT),
+    db=2,
+    password=REDIS_PASSWORD,
+    charset="utf-8",
+    decode_responses=True
+)
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_CLASS_KWARGS": {
+                "max_connections": 50,
+                "timeout": 20,
+                "retry_on_timeout": True,
+            },
+            "MAX_CONNECTIONS": 1000,
+            "PICKLE_VERSION": -1,
+        },
+    }
+}
+
+
+# celery
+CELERY_CACHE_BACKEND = "default"
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/1"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/1"
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+
+# Telegram
+BIT = 0.1
+CONFIRM_TIME = 180 # seconds
+
+# telegram
 SYS_VER = [
-            "macOS Monterey",
-            "macOS Big Sur",
-            "macOS Catalina",
-            "macOS Mojave",
             "Windows 10",
             "Windows 11",
             "Linux",
             "Arch Linux",
         ]
 
-LANG_CODE = ["en","ru","pl","de","uk","ua","sr","es","be","id","it","ja","kk","ko","lv","lt","fr","pt","sk","sl","sv","tr"]
+LANG_CODE = ["en","ru","de","uk","ua","es","be","id","it","fr","sk","sl","sv","tr"]
 
-bg_loop = asyncio.new_event_loop()
-threading.Thread(target=lambda: bg_loop.run_forever(), daemon=True).start()
-
-
-def run_async_bg(coro):
-    asyncio.run_coroutine_threadsafe(coro, bg_loop)
+MESSAGE_FIELDS = [
+    "chat",
+    "chat_id",
+    "date",
+    "edit_date",
+    "forward",
+    "forwards",
+    "from_id",
+    "fwd_from",
+    "geo",
+    "gif",
+    "id",
+    "input_chat",
+    "input_sender",
+    "is_channel",
+    "is_group",
+    "is_private",
+    "is_reply",
+    "legacy",
+    "noforwards",
+    "peer_id",
+    "photo",
+    "pinned",
+    "poll",
+    "post",
+    "raw_text",
+    "reactions",
+    "replies",
+    "reply_to",
+    "reply_to_chat",
+    "reply_to_msg_id",
+    "reply_to_sender",
+    "sender",
+    "sender_id",
+    "sticker",
+    "to_id",
+    "via_bot",
+    "via_bot_id",
+    "video",
+    "video_note",
+    "views",
+    "voice",
+    "web_preview",
+]

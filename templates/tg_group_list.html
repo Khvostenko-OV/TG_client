@@ -26,9 +26,9 @@
                 <tr class="table_header">
                     <th class="cell w20"><input type="checkbox" id="ca_main" name="select_all" value="0"></th>
                     <th class="cell w30" id="ca_counter">0</th>
-                    <th class="cell w140">Name</th>
+                    <th class="cell w280">Link</th>
                     <th class="cell w80">TG ID</th>
-                    <th class="cell w400">Link</th>
+                    <th class="cell w400">Title</th>
                 </tr>
             </thead>
             <tbody>
@@ -38,16 +38,16 @@
                             <input type="checkbox" class="ca_checkbox" name="selected_item" value="{{ group.pk }}">
                         </td>
                         <td class="center">{{ forloop.counter }}.</td>
-                        <td class="cell">{{ group.name|truncatechars:24 }}</td>
+                        <td class="cell">{{ group.name|truncatechars:36 }}</td>
                         <td class="center">{{ group.chat_id }}</td>
-                        <td class="cell">{{ group.chat_link|truncatechars:48 }}</td>
+                        <td class="cell">{{ group.title|truncatechars:48 }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
         <div class="footer">
-            <label class="input_field">Name: <input name="group_name"></label>
+            <label class="input_field">Link: <input name="group_name"></label>
             <button type="submit" class="action_button" name="add_group" value="1">Add group</button>
         </div>
     </form>

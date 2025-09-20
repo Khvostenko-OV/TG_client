@@ -1,5 +1,9 @@
-Django==5.2.4
-fake-agent==0.1.4
-psycopg2-binary==2.9.10
-requests==2.32.4
+celery==5.2.7
+Django==5.1.3
+django-celery-beat==2.7.0
+django-redis==5.4.0
+gunicorn==20.1.0
+psycopg2==2.9.10
+redis==5.2.0
+requests==2.32.5
 Telethon==1.40.0

@@ -1,5 +1,7 @@
 from django.db import models
 
+from TG_client.settings import CONFIRM_TIME
+
 
 class Log(models.Model):
     """ Model for logs stored in DB
@@ -61,7 +63,7 @@ class Parameter(models.Model):
 
 def confirm_time(secs=None) -> int:
     if secs is None:
-        param, created = Parameter.objects.get_or_create(name="CONFIRM_TIME", defaults={"value": "180"})
+        param, created = Parameter.objects.get_or_create(name="CONFIRM_TIME", defaults={"value": str(CONFIRM_TIME)})
     else:
         param, created = Parameter.objects.update_or_create(name="CONFIRM_TIME", defaults={"value": str(secs)})
     return int(param.value)
@@ -69,7 +71,7 @@ def confirm_time(secs=None) -> int:
 
 async def aconfirm_time(secs=None) -> int:
     if secs is None:
-        param, created = await Parameter.objects.aget_or_create(name="CONFIRM_TIME", defaults={"value": "180"})
+        param, created = await Parameter.objects.aget_or_create(name="CONFIRM_TIME", defaults={"value": str(CONFIRM_TIME)})
     else:
         param, created = await Parameter.objects.aupdate_or_create(name="CONFIRM_TIME", defaults={"value": str(secs)})
     return int(param.value)

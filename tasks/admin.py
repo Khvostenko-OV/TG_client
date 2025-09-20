@@ -5,7 +5,7 @@ from tasks.models import TGgroup, Task
 
 @admin.register(TGgroup)
 class GroupAdmin(admin.ModelAdmin):
-    list_display = ["pk", "name", "chat_id", "chat_link"]
+    list_display = ["pk", "name", "chat_id", "title"]
     list_display_links = ("name",)
 
 

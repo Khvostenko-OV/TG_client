@@ -1,13 +1,10 @@
-import asyncio
-
 from asgiref.sync import sync_to_async
 from django.db import models
-from telethon.tl.functions.channels import JoinChannelRequest
 
+from TG_client.celery import app
 from TG_client.choices import TaskStatus, TaskAction
-from TG_client.settings import bg_loop
-from TG_client.telegram import tg_parser, tg_listener
-from TG_client.utils import sleep_bit
+from TG_client.settings import Broker
+from TG_client.utils import sleep_bit, to_dict, save_json
 from accounts.models import User
 from params.models import Log
 
@@ -16,9 +13,9 @@ class TGgroup(models.Model):
     """  Model for TG-chats/channels
     """
 
-    name = models.CharField("Name", max_length=64,null=False, unique=True)
-    chat_id = models.IntegerField("Chat ID", default=0)
-    chat_link = models.CharField("Link", max_length=256, blank=True)
+    name = models.CharField("Name", max_length=64, null=False, unique=True)
+    chat_id = models.CharField("Chat ID", max_length=64, default="")
+    title = models.CharField("Title", max_length=256, default="")
     created_at = models.DateTimeField("Created at", auto_now_add=True, null=True)
 
     class Meta:
@@ -27,7 +24,7 @@ class TGgroup(models.Model):
         ordering = ["pk"]
 
     def __str__(self):
-        return self.name
+        return self.title or self.name
 
     @classmethod
     def get(cls, pk):
@@ -57,7 +54,6 @@ class Task(models.Model):
 
     name = models.CharField("Task", max_length=64, null=False, unique=True)
     admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="tasks", verbose_name="Admin")
-#    channel = models.ForeignKey(VKgroup, on_delete=models.SET_NULL, null=True, related_name="senders", verbose_name="Send to")
     groups = models.ManyToManyField(TGgroup, related_name="tasks", verbose_name="To parse")
     period = models.IntegerField("Period", default=0)
     limit = models.IntegerField("Limit", default=1)
@@ -103,70 +99,70 @@ class Task(models.Model):
 
     def fast_check(self) -> bool:
         if not self.admin:
-            Log.set(f"Check task '{self}'. No admin")
+            Log.set(f"Checking task '{self}'. No admin")
             return False
 
         if not self.groups_count:
-            Log.set(f"Check task '{self}'. No groups for parsing")
+            Log.set(f"Checking task '{self}'. No groups for parsing")
             return False
         return True
 
-    async def async_check(self):
-        try:
-            if not self.admin:
-                raise Exception("No admin")
-            if not await self.admin.connect(bg_loop):
-                raise Exception("TG auth error")
-
-            sleep_bit()
-            for group in await sync_to_async(list)(self.groups.all()):
-                if not group.chat_id:
-                    entity = await self.admin.client.get_entity(group.name)
-                    sleep_bit()
-                    group.chat_id = entity.id
-                    if entity.username:
-                        group.chat_link = f"https://t.me/{entity.username}/"
-                    else:
-                        group.chat_link = f"https://t.me/c/{entity.id}/"
+    async def groups_check(self) -> int:
+        if not self.admin: raise Exception("No admin!")
+        if not self.admin.client: raise Exception(f"[{self.admin}] No connection!")
+        errors = 0
+        print("======= Groups check")
+        dialogs = await self.admin.client.get_dialogs()
+        sleep_bit()
+        print(f"----- Dialogs - {len(dialogs)}")
+        for group in await sync_to_async(list)(self.groups.all()):
+            print(f"======= Group {group}")
+            for dlg in dialogs:
+                if str(dlg.entity.id) == group.chat_id:
+                    entity = dlg.entity
+                    print(f"[{self.admin}] already member of '{group}'")
+                    break
+            else:
+                print(f"[{self.admin}] is not member of '{group}'")
+                entity = await self.admin.join_channel(group.name)
+            if not entity:
+                errors += 1
+                await Log.aset(f"[{self.admin}] Error during connecting TG-group '{group}'")
+            else:
+                print(f"===== Got entity id={entity.id}")
+                save_json(to_dict(entity), str(entity.id))
+                if not group.chat_id or entity.title != group.title:
+                    group.chat_id = str(entity.id)
+                    group.title = entity.title[:256]
                     await group.asave()
-                res = await self.admin.is_channel_member(group.chat_id)
-                sleep_bit()
-                if res == "Not member":
-                    await self.admin.client(JoinChannelRequest(channel=group.name))
-                    sleep_bit()
-                elif "Error" in res:
-                    raise Exception(res)
 
-            self.status = TaskStatus.READY
-            await self.asave()
-            await Log.aset(f"Checking task '{self}' finished - OK")
-        except Exception as e:
-            self.status = TaskStatus.DRAFT
-            self.errors = 1
-            await self.asave()
-            await Log.aset(f"Error during async check task '{self}': {e}")
+        return errors
 
-    def start(self):
-        if not self.fast_check(): return
+    # def start(self):
+    #     if not self.fast_check(): return
+    #
+    #     Log.set(f"Starting task '{self}'")
+    #     self.status = TaskStatus.RUN
+    #     self.errors = 0
+    #     self.found = 0
+    #     self.save()
+    #
+    #     if self.action == TaskAction.PARSE:
+    #         tg_parser(self.id, self.groups_list, self.limit)
+    #         self.status = TaskStatus.FINISH
+    #         self.save()
+    #
+    #     elif self.action == TaskAction.LISTEN:
+    #         tg_listener(self.id)
 
-        Log.set(f"Starting task '{self}'")
-        self.status = TaskStatus.RUN
-        self.errors = 0
-        self.found = 0
+    def stop(self, msg=""):
+        self.status = TaskStatus.STOP
         self.save()
+        Broker.delete(f"Task_id_{self.id}")
+        Log.set(f"Task '{self}' stopped. {msg}")
 
-        if self.action == TaskAction.PARSE:
-            tg_parser(self.id, self.groups_list, self.limit)
-            self.status = TaskStatus.FINISH
-            self.save()
-
-        elif self.action == TaskAction.LISTEN:
-            tg_listener(self.id)
-
-    def stop(self):
-        if self.status in [TaskStatus.CHECK, TaskStatus.RUN]:
-            if self.admin:
-                self.admin.disconnect()
-            self.status = TaskStatus.STOP
-            self.save()
-            Log.set(f"Task '{self}' stopped. Errors - {self.errors}")
+    def finish(self):
+        self.status = TaskStatus.FINISH
+        self.save()
+        Broker.delete(f"Task_id_{self.id}")
+        Log.set(f"Task '{self}' finished")

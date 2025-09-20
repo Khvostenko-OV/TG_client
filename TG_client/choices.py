@@ -1,4 +1,3 @@
-
 class TaskAction:
     LISTEN = "LISTEN"
     PARSE = "PARSE"
