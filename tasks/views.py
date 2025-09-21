@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from celery.contrib.abortable import AbortableAsyncResult
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
@@ -7,7 +9,7 @@ from django.urls import reverse
 from TG_client.choices import TaskStatus, TASK_TODO, TaskAction
 from TG_client.settings import Broker
 from TG_client.utils import dummy, sleep_bit
-from accounts.models import User, Confirmation
+from accounts.models import User
 from params.models import Log, confirm_time
 from tasks.models import Task, TGgroup
 from tasks.tasks import task_run
@@ -69,7 +71,8 @@ def task_list(request):
             user = int(request.POST.get("confirm"))
             code = request.POST.get("confirm_code")
             if code:
-                Confirmation.objects.update_or_create(user=user, defaults={"code": code})
+                Broker.set(f"Confirm_{user}", code, ex=timedelta(seconds=confirm_time()))
+#                Confirmation.objects.update_or_create(user=user, defaults={"code": code})
         elif "action" in request.POST and request.POST["action"] == "change_limit":
             confirm_time(request.POST["limit"])
         elif "selected_item" in request.POST:

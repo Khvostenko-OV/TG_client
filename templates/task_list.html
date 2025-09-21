@@ -58,7 +58,7 @@
                         <td class="center">
                             {% if task.status == "CHECK" %}
                                 <input class="w80" name="confirm_code">
-                                <button type="submit" class="check_button" name="confirm" value="{{ task.pk }}">
+                                <button type="submit" class="check_button" name="confirm" value="{{ task.admin.pk }}">
                                     Confirm
                                 </button>
                             {% else %}

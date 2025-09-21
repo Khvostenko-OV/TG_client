@@ -1,6 +1,7 @@
 import asyncio
 from time import sleep
 
+import socks
 from django.db import models
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
@@ -9,24 +10,9 @@ from telethon.errors import SessionPasswordNeededError, UserNotParticipantError,
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
 
+from TG_client.settings import Broker
 from TG_client.utils import proxy_check, generate_device_info, sleep_bit
 from params.models import Log, aconfirm_time
-
-
-class Confirmation(models.Model):
-    """ Model for received by SMS confirmation codes stored in DB
-    """
-
-    user = models.IntegerField("User", default=0, unique=True)
-    code = models.CharField("Code", max_length=16, default="")
-
-    class Meta:
-        verbose_name = "Confirm code"
-        verbose_name_plural = "Confirm codes"
-
-    @classmethod
-    async def aget(cls, user):
-        return await cls.objects.filter(user=int(user)).afirst()
 
 
 class User(models.Model):
@@ -76,18 +62,34 @@ class User(models.Model):
     def proxy_to_dict(self) -> dict:
         if not self.proxy: return {}
 
-        proxy = {}
-        proxy_type, proxy_str = self.proxy.split("://")
+        if "://" in self.proxy:
+            proxy_type, proxy_str = self.proxy.split("://")
+            proxy_type = proxy_type.lower()
+        else:
+            proxy_type = "http"
+            proxy_str = self.proxy
         if "@" in proxy_str:
             creds, addr_port = proxy_str.split("@")
-            username, password = creds.split(":")
+            if ":" in creds:
+                username, password = creds.split(":")
+            else:
+                creds = username = password = None
         else:
             creds = username = password = None
             addr_port = proxy_str
-        addr, port = addr_port.split(":")
-        proxy.update(proxy_type=proxy_type, addr=addr, port=int(port))
+        if ":" in addr_port:
+            addr, port = addr_port.split(":")
+        else:
+            addr = addr_port
+            port = ""
+        TYPES = {"socks5": socks.SOCKS5, "socks4": socks.SOCKS4, "http": socks.HTTP}
+        proxy = {"proxy_type": TYPES.get(proxy_type, socks.HTTP), "addr": addr}
+        if port.isdigit():
+            proxy["port"] = int(port)
         if creds:
-            proxy.update(username=username, password=password)
+            proxy["username"] = username
+            proxy["password"] = password
+        print(f"....... {proxy}")
         return proxy
 
     def proxy_check(self) -> bool:
@@ -158,30 +160,34 @@ class User(models.Model):
                     await Log.aset(f"[{self}] No confirm code!")
                     return False
 
-                confirm = await Confirmation.aget(self.id)
+#                confirm = await Confirmation.aget(self.id)
+                confirm = Broker.get(f"Confirm_{self.id}")
                 if confirm:
                     break
                 else:
                     sleep(1)
 
-            await Log.aset(f"[{self}] Got confirm code - {confirm.code}. Authorizing")
+            await Log.aset(f"[{self}] Got confirm code - {confirm}. Authorizing")
             try:
-                await self.client.sign_in(phone=self.phone, code=confirm.code)
+                await self.client.sign_in(phone=self.phone, code=confirm)
 
             except PhoneCodeInvalidError:
                 await Log.aset(f"[{self}] The phone code entered was invalid!")
-                await confirm.adelete()
+#                await confirm.adelete()
+                Broker.delete(f"Confirm_{self.id}")
                 return False
             except SessionPasswordNeededError:
                 if not self.password:
                     await Log.aset(f"[{self}] No cloud-password!")
-                    await confirm.adelete()
+#                    await confirm.adelete()
+                    Broker.delete(f"Confirm_{self.id}")
                     return False
                 # https://github.com/AbirHasan2005/TelegramScraper/issues/7
                 await Log.aset(f"[{self}] Sending cloud-password")
                 await self.client.sign_in(password=self.password)
 
-            await confirm.adelete()
+#            await confirm.adelete()
+            Broker.delete(f"Confirm_{self.id}")
 
             if not await self.client.is_user_authorized():
                 await Log.aset(f"[{self}] Auth error!")
