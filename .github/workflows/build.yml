@@ -15,6 +15,6 @@ jobs:
       with:
         name: khvostenko/tgclient
         username: khvostenko
-        password: Cnhfyybr1@
+        password: ${{ secrets.DOCKER_PASSWORD }}
         tags: latest
         dockerfile: Dockerfile
