@@ -83,8 +83,8 @@ WSGI_APPLICATION = "TG_client.wsgi.application"
 DATABASES = {
     "default": {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'tg_client',
-        'HOST': '127.0.0.1',
+        'NAME': 'postgres',
+        'HOST': 'postgres',
         'PORT': '5432',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
@@ -135,7 +135,7 @@ STATICFILES_DIRS = [BASE_DIR / "static", ]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # redis
-REDIS_HOST = "127.0.0.1"
+REDIS_HOST = "redis"
 REDIS_PORT = "6379"
 REDIS_PASSWORD = None
 
