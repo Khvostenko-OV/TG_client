@@ -1,0 +1,20 @@
+name: Publish to Registry Develop
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Publish to Registry
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      with:
+        name: khvostenko/tgclient
+        username: khvostenko
+        password: Cnhfyybr1@
+        tags: latest
+        dockerfile: Dockerfile

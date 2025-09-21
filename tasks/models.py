@@ -130,30 +130,13 @@ class Task(models.Model):
                 await Log.aset(f"[{self.admin}] Error during connecting TG-group '{group}'")
             else:
                 print(f"===== Got entity id={entity.id}")
-                save_json(to_dict(entity), str(entity.id))
+#                save_json(to_dict(entity), str(entity.id))
                 if not group.chat_id or entity.title != group.title:
                     group.chat_id = str(entity.id)
                     group.title = entity.title[:256]
                     await group.asave()
 
         return errors
-
-    # def start(self):
-    #     if not self.fast_check(): return
-    #
-    #     Log.set(f"Starting task '{self}'")
-    #     self.status = TaskStatus.RUN
-    #     self.errors = 0
-    #     self.found = 0
-    #     self.save()
-    #
-    #     if self.action == TaskAction.PARSE:
-    #         tg_parser(self.id, self.groups_list, self.limit)
-    #         self.status = TaskStatus.FINISH
-    #         self.save()
-    #
-    #     elif self.action == TaskAction.LISTEN:
-    #         tg_listener(self.id)
 
     def stop(self, msg=""):
         self.status = TaskStatus.STOP
