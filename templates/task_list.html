@@ -56,7 +56,7 @@
                         <td class="center">{{ task.errors }}</td>
                         <td class="center">{{ task.found }}</td>
                         <td class="center">
-                            {% if task.status == "CHECK" %}
+                            {% if task.status == "WAIT" %}
                                 <input class="w80" name="confirm_code">
                                 <button type="submit" class="check_button" name="confirm" value="{{ task.admin.pk }}">
                                     Confirm
