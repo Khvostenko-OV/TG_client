@@ -22,17 +22,19 @@ def task_run(self, task_pk):
     if not task.fast_check(): return
     task.errors = 0
     task.found = 0
-    task.status = TaskStatus.CHECK
+    task.status = TaskStatus.WAIT
     task.save()
+    Log.set(f"Start task '{task}'")
+    Broker.set(f"Task_id_{task_pk}", self.request.id)
     try:
-        Log.set(f"Start task '{task}'")
-        Broker.set(f"Task_id_{task_pk}", self.request.id)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         threading.Thread(target=loop.run_forever, daemon=True).start()
         future = asyncio.run_coroutine_threadsafe(task.admin.connect(loop), loop)
         result = future.result()
         if not result: raise Exception("TG auth error")
+        task.status = TaskStatus.CHECK
+        task.save()
         future = asyncio.run_coroutine_threadsafe(task.groups_check(), loop)
         errors = future.result()
         if errors:
@@ -44,6 +46,7 @@ def task_run(self, task_pk):
         task.save()
         Broker.delete(f"Task_id_{task_pk}")
         Log.set(f"Checking task '{task}': {e}")
+#        loop.close()
         return
 
     task.status = TaskStatus.RUN
@@ -60,10 +63,11 @@ def task_run(self, task_pk):
             task.save()
             for message in messages:
                 manage(message)
+        task.finish()
 
     except Exception as e:
         task.stop(str(e))
-        return
 
-    task.finish()
-    return
+    future = asyncio.run_coroutine_threadsafe(task.admin.disconnect(), loop)
+    result = future.result()
+#    loop.close()

@@ -6,3 +6,4 @@ build/
 .env
 *.json
 *.log
+*.session

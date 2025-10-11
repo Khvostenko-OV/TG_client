@@ -7,7 +7,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, UserNotParticipantError, ChannelPrivateError, PhoneCodeInvalidError
-from telethon.sessions import StringSession
+#from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
 
 from TG_client.settings import Broker
@@ -29,7 +29,6 @@ class User(models.Model):
     password = models.CharField("Cloud Password", max_length=32, default="")
     proxy = models.CharField("Proxy", max_length=128, default="")
 
-#    session_id = models.CharField("Session", max_length=64, default="")
     device_model = models.CharField("Device", max_length=256, default="")
     system_version = models.CharField("System ver", max_length=32, default="")
     app_version = models.CharField("App ver", max_length=4, default="")
@@ -82,8 +81,8 @@ class User(models.Model):
         else:
             addr = addr_port
             port = ""
-        TYPES = {"socks5": socks.SOCKS5, "socks4": socks.SOCKS4, "http": socks.HTTP}
-        proxy = {"proxy_type": TYPES.get(proxy_type, socks.HTTP), "addr": addr}
+        types = {"socks5": socks.SOCKS5, "socks4": socks.SOCKS4, "http": socks.HTTP}
+        proxy = {"proxy_type": types.get(proxy_type, socks.HTTP), "addr": addr}
         if port.isdigit():
             proxy["port"] = int(port)
         if creds:
@@ -104,7 +103,6 @@ class User(models.Model):
             if not self.phone: raise Exception("Define phone_number!")
             if not self.api_id: raise Exception("Define api_id!")
             if not self.api_hash: raise Exception("Define api_hash!")
-#            if not self.password: raise Exception("Define password!")
             if not self.proxy: raise Exception("Define proxy!")
             if not self.proxy_check(): raise Exception(f"Proxy '{self.proxy}' not active!")
         except Exception as e:
@@ -126,7 +124,7 @@ class User(models.Model):
 
         if not self.client:
             self.client = TelegramClient(
-                session=StringSession(),
+                session=self.api_id,
                 loop=loop,
                 api_id=int(self.api_id),
                 api_hash=self.api_hash,
@@ -160,7 +158,6 @@ class User(models.Model):
                     await Log.aset(f"[{self}] No confirm code!")
                     return False
 
-#                confirm = await Confirmation.aget(self.id)
                 confirm = Broker.get(f"Confirm_{self.id}")
                 if confirm:
                     break
@@ -173,20 +170,17 @@ class User(models.Model):
 
             except PhoneCodeInvalidError:
                 await Log.aset(f"[{self}] The phone code entered was invalid!")
-#                await confirm.adelete()
                 Broker.delete(f"Confirm_{self.id}")
                 return False
             except SessionPasswordNeededError:
                 if not self.password:
                     await Log.aset(f"[{self}] No cloud-password!")
-#                    await confirm.adelete()
                     Broker.delete(f"Confirm_{self.id}")
                     return False
                 # https://github.com/AbirHasan2005/TelegramScraper/issues/7
                 await Log.aset(f"[{self}] Sending cloud-password")
                 await self.client.sign_in(password=self.password)
 
-#            await confirm.adelete()
             Broker.delete(f"Confirm_{self.id}")
 
             if not await self.client.is_user_authorized():
@@ -205,7 +199,7 @@ class User(models.Model):
     async def disconnect(self):
         if self.client:
             await self.client.disconnect()
-#            del self.admin.client
+            self.client = None
 
     async def is_channel_member(self, channel) -> str:
         if not self.client: return f"Error: [{self}] - No client"

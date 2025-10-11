@@ -33,7 +33,7 @@ class TaskStatus:
 
 
 TASK_TODO = {
-    TaskStatus.DRAFT: "Check",
+    TaskStatus.DRAFT: "Start",
     TaskStatus.CHECK: "Abort",
     TaskStatus.READY: "Start",
     TaskStatus.RUN: "Stop",
