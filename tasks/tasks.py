@@ -8,7 +8,7 @@ from celery.contrib.abortable import AbortableTask
 
 from TG_client.choices import TaskStatus
 from TG_client.settings import Broker
-from TG_client.utils import manage
+from TG_client.utils import send_results
 from params.models import Log
 from tasks.models import Task
 
@@ -52,7 +52,6 @@ def task_run(self, task_pk):
     task.status = TaskStatus.RUN
     task.save()
     try:
-        print("====== Start parsing")
         for group in task.groups.all():
             if self.is_aborted(): raise Exception(f"Aborted by user")
             Log.set(f"[{task.admin}] Parsing chat {group}")
@@ -61,8 +60,12 @@ def task_run(self, task_pk):
             Log.set(f"[{task.admin}] Received messages {len(messages)}")
             task.found += len(messages)
             task.save()
-            for message in messages:
-                manage(message)
+            res = send_results(messages, task.url)
+            if res:
+                Log.set(f"[{task.admin}] Can't send results: {res}")
+            else:
+                Log.set(f"[{task.admin}] {len(messages)} sent to {task.url}")
+
         task.finish()
 
     except Exception as e:

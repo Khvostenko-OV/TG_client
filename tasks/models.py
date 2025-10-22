@@ -57,6 +57,7 @@ class Task(models.Model):
     groups = models.ManyToManyField(TGgroup, related_name="tasks", verbose_name="To parse")
     period = models.IntegerField("Period", default=0)
     limit = models.IntegerField("Limit", default=1)
+    url = models.CharField("Endpoint", max_length=2048, default="")
     action: TaskAction = models.CharField(
         "Action",
         max_length=16,
