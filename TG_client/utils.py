@@ -97,32 +97,50 @@ def generate_device_info() -> dict:
 
 
 def message_to_dict(message: Message) -> dict:
-    return { attr: str(getattr(message, attr, "None")) for attr in MESSAGE_FIELDS }
+    return {attr: str(getattr(message, attr, "None")) for attr in MESSAGE_FIELDS}
 
 
-def manage(message: Message):
-    sender = message.sender
+def send_results(messages: list[Message], url: str) -> str:
+    if not url: return "No endpoint to send results!"
+    if not messages: return "No messages to send!"
 
-    user_link = f"tg://user?id={sender.id}"
-    if sender.username:
-        user_link = f"@{sender.username}"
+    try:
+        data = [message_to_dict(m) for m in messages]
+        hdrs = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        resp = requests.post(url, data=json.dumps(data), headers=hdrs)
+        resp.raise_for_status()
+    except Exception as err:
+        print(f"Error: {err}")
+        return str(err)
+    return ""
 
-    # Get username or string: "first_name + last_name" for search in group
-    username = sender.username
-    if not username:
-        username = " ".join([f for f in [sender.first_name, sender.last_name] if f])
-    if not username:
-        username = str(sender.id)
 
-    # link to message
-    if message.chat.username:
-        message_link = f"https://t.me/{message.chat.username}/{message.id}"
-    else:
-        message_link = f"https://t.me/c/{message.chat.id}/{message.id}/"
-
-    save_json(message_to_dict(message), f"{username}_{message.id}")
-    print("---- Receive message")
-    print(f"From: {username} - {user_link}")
-    print(f"Text: {message.raw_text}")
-    print()
-    print(f"Link: {message_link}")
+# def manage(message: Message):
+#     sender = message.sender
+#
+#     user_link = f"tg://user?id={sender.id}"
+#     if sender.username:
+#         user_link = f"@{sender.username}"
+#
+#     # Get username or string: "first_name + last_name" for search in group
+#     username = sender.username
+#     if not username:
+#         username = " ".join([f for f in [sender.first_name, sender.last_name] if f])
+#     if not username:
+#         username = str(sender.id)
+#
+#     # link to message
+#     if message.chat.username:
+#         message_link = f"https://t.me/{message.chat.username}/{message.id}"
+#     else:
+#         message_link = f"https://t.me/c/{message.chat.id}/{message.id}/"
+#
+#     save_json(message_to_dict(message), f"{username}_{message.id}")
+#     print("---- Receive message")
+#     print(f"From: {username} - {user_link}")
+#     print(f"Text: {message.raw_text}")
+#     print()
+#     print(f"Link: {message_link}")

@@ -24,7 +24,7 @@ def log_view(request):
         elif request.POST["action"] == "delete_confirm":
             Log.objects.filter(user_id=0).delete()
 
-    return render(request, "log.html", {"lines": Log.get(), "menu": 4})
+    return render(request, "log.html", {"total": Log.count(), "lines": Log.get(), "menu": 4})
 
 
 def tasks_delete(pk_list: list):
@@ -103,6 +103,7 @@ def task_add(request):
         task, created = Task.objects.get_or_create(name=request.POST.get("name"))
         if created:
             task.limit = max(int(request.POST.get("limit")), 0)
+            task.url = request.POST.get("url", "")
             task.period = int(request.POST.get("period", 0))
             task.action = request.POST.get("action")
             if int(request.POST.get("admin_id")):
@@ -137,6 +138,7 @@ def task_change(request, pk):
     if request.method == "POST":
         name = request.POST.get("name")
         limit = int(request.POST.get("limit", 1))
+        url = request.POST.get("url", "")
         period = int(request.POST.get("period", 0))
         action = request.POST.get("action")
         admin = User.get(request.POST["admin_id"])
@@ -146,7 +148,7 @@ def task_change(request, pk):
         del_groups = old_groups - selected_groups
         new_groups = selected_groups - old_groups
 
-        if all([name == task.name, limit == task.limit, period == task.period,
+        if all([name == task.name, limit == task.limit, url == task.url, period == task.period,
                 action == task.action, admin == task.admin, not del_groups, not new_groups]
                ):
             return HttpResponseRedirect(reverse("tasks"))
@@ -158,6 +160,7 @@ def task_change(request, pk):
         if name != task.name and not Task.get_by_name(name):
             task.name = name
         task.limit = limit
+        task.url = url
         task.period = period
         task.action = action
         task.admin = admin

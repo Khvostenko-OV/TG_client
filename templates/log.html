@@ -9,6 +9,7 @@
     <form class="change_form" method="post">
         {% csrf_token %}
         <div>
+            Total {{ total }} entries
             <button type="submit" class="action_button" name="action" value="delete">Clear</button>
         </div>
     </form>
