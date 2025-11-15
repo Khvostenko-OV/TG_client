@@ -20,19 +20,31 @@ input username & password (email can be skipped)
 > exit
 ```
 
-## Add TG_user
+## Add TG-user
 
-**Conoted1**
-- phone: +38268300959
-- api_id: 25096736
-- api_hash: ab4b968da5404967df672d99e2862a08
+**Credentials:**
+- phone number
+- api_id
+- api_hash
 
-**Conoted2**
-- phone: +38267827026
-- api_id:  24315515
-- api_hash: 89a0c057532f7da3ff20fb7a1d96d58e
+**Proxy format:**
+- SOCKS5: socks5://username:password@host:port
+- HTTP: username:password@host:port
 
-**Proxy:**
-- socks5://username:password@host:port
-- username:password@host:port (http proxy)
+## Add TG-groups
 
+Add TG-chats/channels. Enter invite-link or channel's name
+
+## Create task
+
+**Parameters:**
+- *admin* - TG-user
+- *period* - frequency of parsing (hours). If 0 parses once *limit* last messages
+- *limit* - how many messages get at once (only works when period=0)
+- *endpoint* - endpoint to send results (requests.post)
+- *action* - LISTENER or PARSER (doesn't work for now)
+- *groups* - list of TG-chats for parsing
+
+## Parsing
+
+After starting parser enter confirmation code (once for each TG-user)

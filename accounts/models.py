@@ -1,5 +1,6 @@
 import asyncio
 from time import sleep
+from datetime import datetime, timedelta, timezone
 
 import socks
 from django.db import models
@@ -88,7 +89,6 @@ class User(models.Model):
         if creds:
             proxy["username"] = username
             proxy["password"] = password
-        print(f"....... {proxy}")
         return proxy
 
     def proxy_check(self) -> bool:
@@ -103,10 +103,10 @@ class User(models.Model):
             if not self.phone: raise Exception("Define phone_number!")
             if not self.api_id: raise Exception("Define api_id!")
             if not self.api_hash: raise Exception("Define api_hash!")
-            if not self.proxy: raise Exception("Define proxy!")
-            if not self.proxy_check(): raise Exception(f"Proxy '{self.proxy}' not active!")
+            # if not self.proxy: raise Exception("Define proxy!")
+            if self.proxy and not self.proxy_check(): raise Exception(f"Proxy '{self.proxy}' not active!")
         except Exception as e:
-            await Log.aset(f"[{self}] Error -> {e}")
+            await Log.aset(f"[{self}] Check error -> {e}")
             return False
         if not self.device_model:
             info = generate_device_info()
@@ -147,41 +147,39 @@ class User(models.Model):
             await Log.aset(f"[{self}] Sending SMS request")
             await self.client.send_code_request(self.phone.strip())
 
-            # here we need to wait code from DB and Cloud Password from DB
+            # here we need to wait confirmation code
             limit = await aconfirm_time()
             await Log.aset(f"[{self}] Waiting for confirm code {limit}s.")
 
             i = 0
-            while True:
+            confirm = None
+            while i < limit:
                 i += 1
-                if i > limit:
-                    await Log.aset(f"[{self}] No confirm code!")
-                    return False
-
                 confirm = Broker.get(f"Confirm_{self.id}")
                 if confirm:
-                    break
+                    i = limit
                 else:
                     sleep(1)
 
+            if not confirm:
+                await Log.aset(f"[{self}] No confirm code!")
+                return False
+
+            Broker.delete(f"Confirm_{self.id}")
             await Log.aset(f"[{self}] Got confirm code - {confirm}. Authorizing")
             try:
                 await self.client.sign_in(phone=self.phone, code=confirm)
 
             except PhoneCodeInvalidError:
                 await Log.aset(f"[{self}] The phone code entered was invalid!")
-                Broker.delete(f"Confirm_{self.id}")
                 return False
             except SessionPasswordNeededError:
                 if not self.password:
                     await Log.aset(f"[{self}] No cloud-password!")
-                    Broker.delete(f"Confirm_{self.id}")
                     return False
                 # https://github.com/AbirHasan2005/TelegramScraper/issues/7
                 await Log.aset(f"[{self}] Sending cloud-password")
                 await self.client.sign_in(password=self.password)
-
-            Broker.delete(f"Confirm_{self.id}")
 
             if not await self.client.is_user_authorized():
                 await Log.aset(f"[{self}] Auth error!")
@@ -233,7 +231,7 @@ class User(models.Model):
 
         return entity
 
-    async def parse_channel(self, chat_id, limit=1) -> list:
+    async def parse_channel(self, chat_id, period=0, limit=1) -> list:
         if not self.client:
             await Log.aset(f"[{self}] No connection!")
             return []
@@ -246,6 +244,27 @@ class User(models.Model):
         else:
             await Log.aset(f"[{self}] is not member of TG-group id={chat_id}")
             return []
-        res = await self.client.get_messages(entity, limit=limit)
-        sleep_bit()
+        if not period:
+            res = await self.client.get_messages(entity, limit=limit)
+            sleep_bit()
+            return res
+
+        stop = False
+        since = datetime.now(timezone.utc) - timedelta(hours=period)
+        offset = 0
+        res = []
+        while not stop:
+            get = await self.client.get_messages(entity, limit=100, offset_id=offset)
+            sleep_bit()
+
+            if not get: break
+            if len(get) < 100:
+                stop = True
+
+            offset = get[-1].id
+            if get[-1].date >= since:
+                res += get
+            else:
+                stop = True
+                res += [m for m in get if m.date >= since]
         return res

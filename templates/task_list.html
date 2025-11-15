@@ -20,7 +20,7 @@
             <button type="submit" class="action_button" name="index" value="1">Execute</button>
             <span>Total tasks - {{ tasks|length }}</span>
             <a href="/task/add" class="a_button">Add task</a>
-            <label> Confirm time <input type="number" class="w40" name="limit" value={{ limit }} min=1> sec</label>
+            <label> Confirm time <input type="number" class="w40" name="limit" value={{ limit }} min=1> sec.</label>
             <button type="submit" class="action_button" name="action" value="change_limit">Change</button>
 
         </div>
@@ -34,10 +34,11 @@
                     <th class="cell w120">Name</th>
                     <th class="cell w120">Admin</th>
                     <th class="cell w60">Groups</th>
-                    <th class="cell w60">Action</th>
-                    <th class="cell w60">Status</th>
+                    <th class="cell w60">Period</th>
+                    <th class="cell w60">Limit</th>
                     <th class="cell w60">Errors</th>
                     <th class="cell w60">Received</th>
+                    <th class="cell w60">Status</th>
                     <th class="cell w160">Execute</th>
                 </tr>
             </thead>
@@ -51,10 +52,11 @@
                         <td class="cell"><a href="{{ task.pk }}/change">{{ task.name|truncatechars:20 }}</a></td>
                         <td class="cell">{{ task.admin|truncatechars:20 }}</td>
                         <td class="center">{{ task.groups_count }}</td>
-                        <td class="center">{{ task.action }}</td>
-                        <td class="center">{{ task.status }}</td>
+                        <td class="center">{{ task.period }}</td>
+                        <td class="center">{{ task.limit }}</td>
                         <td class="center">{{ task.errors }}</td>
                         <td class="center">{{ task.found }}</td>
+                        <td class="center">{{ task.status }}</td>
                         <td class="center">
                             {% if task.status == "WAIT" %}
                                 <input class="w80" name="confirm_code">

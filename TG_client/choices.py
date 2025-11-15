@@ -30,6 +30,7 @@ class TaskStatus:
     )
 
     LIST = [ch[0] for ch in CHOICES]
+    WORK = (CHECK, RUN, WAIT)
 
 
 TASK_TODO = {

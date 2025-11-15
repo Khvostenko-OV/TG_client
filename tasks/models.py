@@ -1,10 +1,15 @@
+import json
+from datetime import datetime, timedelta
+
 from asgiref.sync import sync_to_async
+from celery.contrib.abortable import AbortableAsyncResult
 from django.db import models
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 from TG_client.celery import app
 from TG_client.choices import TaskStatus, TaskAction
 from TG_client.settings import Broker
-from TG_client.utils import sleep_bit, to_dict, save_json
+from TG_client.utils import sleep_bit
 from accounts.models import User
 from params.models import Log
 
@@ -46,6 +51,7 @@ class Task(models.Model):
     period - frequency of parsing (hours)
     limit - how many messages get at once
     action - LISTENER or PARSER
+    url - link to send results
     status - working status
     groups - TG-groups for parsing
     errors - errors during parsing
@@ -100,11 +106,19 @@ class Task(models.Model):
 
     def fast_check(self) -> bool:
         if not self.admin:
-            Log.set(f"Checking task '{self}'. No admin")
+            Log.set(f"Checking task '{self}' -> No admin")
+            self.status = TaskStatus.DRAFT
+            self.save()
             return False
 
         if not self.groups_count:
-            Log.set(f"Checking task '{self}'. No groups for parsing")
+            Log.set(f"Checking task '{self}' -> No groups for parsing")
+            self.status = TaskStatus.DRAFT
+            self.save()
+            return False
+
+        if not self.url:
+            Log.set(f"Checking task '{self}' -> No endpoint to send results")
             return False
         return True
 
@@ -117,7 +131,6 @@ class Task(models.Model):
         sleep_bit()
         print(f"----- Dialogs - {len(dialogs)}")
         for group in await sync_to_async(list)(self.groups.all()):
-            print(f"======= Group {group}")
             for dlg in dialogs:
                 if str(dlg.entity.id) == group.chat_id:
                     entity = dlg.entity
@@ -139,14 +152,49 @@ class Task(models.Model):
 
         return errors
 
-    def stop(self, msg=""):
-        self.status = TaskStatus.STOP
+    def periodic_create(self):
+        if not self.period: return
+
+        PeriodicTask.objects.filter(name=f"Parser_{self.pk}").delete()
+
+        schedule, created = IntervalSchedule.objects.get_or_create(
+            every=self.period,
+            period=IntervalSchedule.HOURS,
+        )
+        PeriodicTask.objects.create(
+            name=f"Parser_{self.pk}",
+            task="tasks.tasks.task_run",
+            args=json.dumps([self.pk]),
+
+            start_time=datetime.utcnow() + timedelta(hours=self.period),
+            interval=schedule,
+        )
+
+    def start(self):
+        self.errors = 0
+        self.found = 0
         self.save()
+        self.periodic_create()
+        Log.set(f"Start task '{self}'")
+
+    def stop(self, msg=""):
+        PeriodicTask.objects.filter(name=f"Parser_{self.pk}").delete()
+        p_id = Broker.get(f"Task_id_{self.id}")
+        if p_id:
+            abort = AbortableAsyncResult(p_id)
+            abort.abort()
         Broker.delete(f"Task_id_{self.id}")
+        if self.status in [TaskStatus.CHECK, TaskStatus.DRAFT, TaskStatus.WAIT]:
+            self.status = TaskStatus.DRAFT
+        else:
+            self.status = TaskStatus.STOP
+        self.save()
         Log.set(f"Task '{self}' stopped. {msg}")
 
     def finish(self):
-        self.status = TaskStatus.FINISH
-        self.save()
+        PeriodicTask.objects.filter(name=f"Parser_{self.pk}").delete()
         Broker.delete(f"Task_id_{self.id}")
-        Log.set(f"Task '{self}' finished")
+        if self.status == TaskStatus.RUN:
+            self.status = TaskStatus.FINISH
+            self.save()
+            Log.set(f"Task '{self}' finished")

@@ -4,6 +4,7 @@
 import json
 from random import random, randint, choice, uniform
 from time import sleep, time
+from datetime import datetime, timedelta
 
 import requests
 from telethon.tl.patched import Message
@@ -31,6 +32,10 @@ def formatted_time(duration=0.0) -> str:
         hours = seconds // 3600
         seconds -= hours * 3600
         return f"{hours}h {seconds // 60}min {seconds % 60}sec"
+
+
+def check_time(date, period: int) -> bool:
+    return datetime.utcnow() - datetime.fromisoformat(str(date)) <= timedelta(hours=period)
 
 
 def to_dict(obj) -> dict:

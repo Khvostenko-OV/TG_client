@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from celery.contrib.abortable import AbortableAsyncResult
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
@@ -17,7 +16,6 @@ from tasks.tasks import task_run
 
 @login_required
 def log_view(request):
-
     if request.method == "POST":
         if request.POST["action"] == "delete":
             return render(request, "delete.html", {"name": "Log file", "list": [f"logs {Log.count(0)}"]})
@@ -38,20 +36,19 @@ def tasks_delete(pk_list: list):
 
 
 def task_start(task: Task):
+    if not task.fast_check(): return
+    task.start()
     task_run.delay(task.id)
-    sleep_bit(0.5)
+    sleep_bit(0.9)
 
 
 def task_stop(task: Task):
-    task_id = Broker.get(f"Task_id_{task.id}")
-    if task_id:
-        abort = AbortableAsyncResult(task_id)
-        abort.abort()
+    task.stop("Aborted by user")
 
 
 task_action = {
     TaskStatus.DRAFT: task_start,
-    TaskStatus.CHECK: dummy,
+    TaskStatus.CHECK: task_stop,
     TaskStatus.READY: task_start,
     TaskStatus.RUN: task_stop,
     TaskStatus.STOP: task_start,
@@ -62,7 +59,6 @@ task_action = {
 
 @login_required
 def task_list(request):
-
     if request.method == "POST":
         if "click_task" in request.POST:
             task = Task.get(request.POST.get("click_task"))
@@ -72,7 +68,7 @@ def task_list(request):
             code = request.POST.get("confirm_code")
             if code:
                 Broker.set(f"Confirm_{user}", code, ex=timedelta(seconds=confirm_time()))
-#                Confirmation.objects.update_or_create(user=user, defaults={"code": code})
+        #                Confirmation.objects.update_or_create(user=user, defaults={"code": code})
         elif "action" in request.POST and request.POST["action"] == "change_limit":
             confirm_time(request.POST["limit"])
         elif "selected_item" in request.POST:
@@ -131,7 +127,6 @@ def task_add(request):
 
 @login_required
 def task_change(request, pk):
-
     task = Task.get(pk)
     if not task: return HttpResponseRedirect(reverse("tasks"))
 
@@ -153,8 +148,9 @@ def task_change(request, pk):
                ):
             return HttpResponseRedirect(reverse("tasks"))
 
-        if task.status in [TaskStatus.CHECK, TaskStatus.RUN]:
-            task_stop(task)
+        if task.status in TaskStatus.WORK \
+                and any([period != task.period, action != task.action, admin != task.admin, new_groups]):
+            task.stop("Restart required")
         if any([admin != task.admin, new_groups]):
             task.status = TaskStatus.DRAFT
         if name != task.name and not Task.get_by_name(name):
