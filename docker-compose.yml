@@ -34,7 +34,7 @@ services:
       - ./pgdata:/var/lib/postgresql/data
 
   backend:
-    container_name: pg_backend
+    container_name: tg_backend
     image: khvostenko/tgclient:latest
     restart: always
     command: bash -c "
