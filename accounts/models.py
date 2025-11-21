@@ -8,7 +8,7 @@ from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, UserNotParticipantError, ChannelPrivateError, PhoneCodeInvalidError
-#from telethon.sessions import StringSession
+from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
 
 from TG_client.settings import Broker
@@ -29,6 +29,8 @@ class User(models.Model):
     phone = models.CharField("Phone", max_length=16, default="")
     password = models.CharField("Cloud Password", max_length=32, default="")
     proxy = models.CharField("Proxy", max_length=128, default="")
+
+    session = models.TextField("Telethon Session", default="", blank=True)
 
     device_model = models.CharField("Device", max_length=256, default="")
     system_version = models.CharField("System ver", max_length=32, default="")
@@ -124,7 +126,7 @@ class User(models.Model):
 
         if not self.client:
             self.client = TelegramClient(
-                session=self.api_id,
+                session=StringSession(self.session or None),
                 loop=loop,
                 api_id=int(self.api_id),
                 api_hash=self.api_hash,
@@ -143,59 +145,69 @@ class User(models.Model):
         await Log.aset(f"[{self}] Start connection")
         await self.client.connect()
 
+        if await self.client.is_user_authorized():
+            await Log.aset(f"[{self}] Authorized with session")
+            return True
+
+        await Log.aset(f"[{self}] Sending SMS request")
+        await self.client.send_code_request(self.phone.strip())
+
+        # here we need to wait confirmation code
+        limit = await aconfirm_time()
+        await Log.aset(f"[{self}] Waiting for confirm code {limit}s.")
+
+        i = 0
+        confirm = None
+        while i < limit:
+            i += 1
+            confirm = Broker.get(f"Confirm_{self.id}")
+            if confirm:
+                i = limit
+            else:
+                sleep(1)
+
+        if not confirm:
+            await Log.aset(f"[{self}] No confirm code!")
+            return False
+
+        Broker.delete(f"Confirm_{self.id}")
+        await Log.aset(f"[{self}] Got confirm code - {confirm}. Authorizing")
+        try:
+            await self.client.sign_in(phone=self.phone, code=confirm)
+
+        except PhoneCodeInvalidError:
+            await Log.aset(f"[{self}] The phone code entered was invalid!")
+            return False
+        except SessionPasswordNeededError:
+            if not self.password:
+                await Log.aset(f"[{self}] No cloud-password!")
+                return False
+            await Log.aset(f"[{self}] Sending cloud-password")
+            await self.client.sign_in(password=self.password)
+
         if not await self.client.is_user_authorized():
-            await Log.aset(f"[{self}] Sending SMS request")
-            await self.client.send_code_request(self.phone.strip())
-
-            # here we need to wait confirmation code
-            limit = await aconfirm_time()
-            await Log.aset(f"[{self}] Waiting for confirm code {limit}s.")
-
-            i = 0
-            confirm = None
-            while i < limit:
-                i += 1
-                confirm = Broker.get(f"Confirm_{self.id}")
-                if confirm:
-                    i = limit
-                else:
-                    sleep(1)
-
-            if not confirm:
-                await Log.aset(f"[{self}] No confirm code!")
-                return False
-
-            Broker.delete(f"Confirm_{self.id}")
-            await Log.aset(f"[{self}] Got confirm code - {confirm}. Authorizing")
-            try:
-                await self.client.sign_in(phone=self.phone, code=confirm)
-
-            except PhoneCodeInvalidError:
-                await Log.aset(f"[{self}] The phone code entered was invalid!")
-                return False
-            except SessionPasswordNeededError:
-                if not self.password:
-                    await Log.aset(f"[{self}] No cloud-password!")
-                    return False
-                # https://github.com/AbirHasan2005/TelegramScraper/issues/7
-                await Log.aset(f"[{self}] Sending cloud-password")
-                await self.client.sign_in(password=self.password)
-
-            if not await self.client.is_user_authorized():
-                await Log.aset(f"[{self}] Auth error!")
+            await Log.aset(f"[{self}] Auth error!")
 #                self.client = None
-                return False
+            return False
 
         me = await self.client.get_me()
         print(f"----- Connected me={me.id}")
         sleep_bit()
         self.tg_id = str(me.id)
+        self.session = self.client.session.save()
         await self.asave()
         await Log.aset(f"[{self}] Auth OK")
         return True
 
     async def disconnect(self):
         if self.client:
+            try:
+                self.session = self.client.session.save()
+                await self.asave()
+                await Log.aset(f"[{self}] Disconnect. Session saved")
+            except Exception as e:
+                await Log.aset(f"[{self}] Disconnect. Error saving session: {e}")
+
             await self.client.disconnect()
             self.client = None
 
