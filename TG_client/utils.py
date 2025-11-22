@@ -10,6 +10,7 @@ import requests
 from telethon.tl.patched import Message
 
 from TG_client.settings import BIT, LANG_CODE, SYS_VER, MESSAGE_FIELDS
+from params.models import api_header, api_key
 
 
 def dummy(*a, **b):
@@ -114,6 +115,7 @@ def send_results(messages: list[Message], url: str) -> str:
         hdrs = {
             "Content-Type": "application/json",
             "Accept": "application/json",
+            api_header(): api_key(),
         }
         resp = requests.post(url, data=json.dumps(data), headers=hdrs)
         resp.raise_for_status()

@@ -26,7 +26,7 @@ def sign_in(request):
     return render(request, "auth.html", {"message": "Input login and password"})
 
 
-def tg_users_delete(pk_list: list):
+def users_delete(pk_list: list):
     del_users = User.objects.filter(pk__in=pk_list)
     deleted = del_users.count()
     del_users.delete()
@@ -34,17 +34,17 @@ def tg_users_delete(pk_list: list):
 
 
 @login_required
-def tg_user_list(request):
+def user_list(request):
 
     if request.method == "POST":
         if "selected_item" in request.POST:
             users = User.objects.filter(pk__in=request.POST.getlist("selected_item"))
             return render(request, "delete.html", {"name": "TG-users", "list": users})
         elif request.POST["action"] == "delete_confirm":
-            tg_users_delete(request.POST.getlist("pk_list"))
+            users_delete(request.POST.getlist("pk_list"))
 
     context = {
-        "users": User.objects.all(),
+        "users": [u.to_dict for u in User.objects.all()],
         "lines": Log.get(0, 24),
         "menu": 1,
     }
@@ -52,7 +52,7 @@ def tg_user_list(request):
 
 
 @login_required
-def tg_user_add(request):
+def user_add(request):
     messages = []
     if request.method == "POST":
         user, created = User.objects.get_or_create(
@@ -75,7 +75,7 @@ def tg_user_add(request):
 
 
 @login_required
-def tg_user_change(request, pk):
+def user_change(request, pk):
     user = User.get(pk)
     if not user: return HttpResponseRedirect(reverse("tg_users"))
 
@@ -113,7 +113,7 @@ def tg_user_change(request, pk):
             return HttpResponseRedirect(reverse("tg_users"))
 
     context = {
-        "user": user,
+        "user": user.to_dict,
         "messages": messages,
         "menu": 1,
     }

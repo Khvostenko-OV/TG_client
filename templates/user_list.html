@@ -30,6 +30,8 @@
                     <th class="cell w160">Name</th>
                     <th class="cell w100">Phone</th>
                     <th class="cell w100">TG ID</th>
+                    <th class="cell w60">Tasks</th>
+                    <th class="cell w60">Session</th>
                     <th class="cell w320">Proxy</th>
                 </tr>
             </thead>
@@ -43,6 +45,8 @@
                         <td class="cell"><a href="{{ user.pk }}/change">{{ user.name|truncatechars:30 }}</a></td>
                         <td class="cell">{{ user.phone|truncatechars:20 }}</td>
                         <td class="center">{{ user.tg_id }}</td>
+                        <td class="center">{{ user.tasks }}</td>
+                        <td class="center">{% if user.session %}++{% else %}--{% endif %}</td>
                         <td class="cell">{{ user.proxy|truncatechars:50 }}</td>
                     </tr>
                 {% endfor %}

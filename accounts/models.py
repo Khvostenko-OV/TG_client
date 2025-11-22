@@ -61,6 +61,28 @@ class User(models.Model):
         return cls.objects.filter(name=name).first()
 
     @property
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "pk": self.id,
+            "name": self.name,
+            "api_id": self.api_id,
+            "api_hash": self.api_hash,
+            "tg_id": self.tg_id,
+            "phone": self.phone,
+            "password": self.password,
+            "proxy": self.proxy,
+            "session": True if self.session else False,
+            "device_model": self.device_model,
+            "system_version": self.system_version,
+            "app_version": self.app_version,
+            "lang_code": self.lang_code,
+            "system_lang_code": self.system_lang_code,
+            "created_at": str(self.created_at),
+            "tasks": self.tasks.count(),
+        }
+
+    @property
     def proxy_to_dict(self) -> dict:
         if not self.proxy: return {}
 
