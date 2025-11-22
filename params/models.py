@@ -75,3 +75,19 @@ async def aconfirm_time(secs=None) -> int:
     else:
         param, created = await Parameter.objects.aupdate_or_create(name="CONFIRM_TIME", defaults={"value": str(secs)})
     return int(param.value)
+
+
+def api_header(hdr=None) -> str:
+    if hdr is None:
+        param, created = Parameter.objects.get_or_create(name="AUTH_API_HEADER", defaults={"value": "X-API-Key"})
+    else:
+        param, created = Parameter.objects.update_or_create(name="AUTH_API_HEADER", defaults={"value": str(hdr)})
+    return param.value
+
+
+def api_key(key=None) -> str:
+    if key is None:
+        param, created = Parameter.objects.get_or_create(name="AUTH_API_KEY")
+    else:
+        param, created = Parameter.objects.update_or_create(name="AUTH_API_KEY", defaults={"value": str(key)})
+    return param.value

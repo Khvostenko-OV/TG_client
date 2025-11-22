@@ -1,0 +1,14 @@
+from django.urls import path
+
+from api.views import group_add, group_delete
+
+urlpatterns = [
+    path("group/add/", group_add, name="api_group_add"),
+    path("group/delete/", group_delete, name="api_group_del"),
+    path("group/parse", group_delete, name="api_group_parse"),
+    path("task/add/", group_delete, name="api_task_add"),
+    path("task/delete/", group_delete, name="api_task_del"),
+    path("task/update/", group_delete, name="api_task_change"),
+    path("task/start/", group_delete, name="api_task_start"),
+    path("task/stop/", group_delete, name="api_task_del"),
+]
