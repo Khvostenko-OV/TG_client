@@ -61,19 +61,25 @@ def task_run(self, task_pk):
                 task.save()
                 continue
             Log.set(f"[{task.admin}] Parsing chat '{group}'")
-            future = asyncio.run_coroutine_threadsafe(task.admin.parse_channel(group.chat_id, task.period, task.limit), loop)
-            messages = future.result()
-            Log.set(f"[{task.admin}] Received messages - {len(messages)}")
-            if messages:
-                task.found += len(messages)
+            future = asyncio.run_coroutine_threadsafe(
+                task.admin.parse_channel(group.chat_id, period=task.period, limit=task.limit), loop
+            )
+            result = future.result()
+            count = result["count"]
+            Log.set(f"[{task.admin}] Received messages - {count}")
+            if count:
+                task.found += count
                 task.save()
-                res = send_results(messages, task.url)
+                if count > 100:
+                    res = send_results(task.url, filename=result["filename"])
+                else:
+                    res = send_results(task.url, result["messages"])
                 if res:
                     Log.set(f"({task}) Error: [{task.admin}] Can't send results -> {res}")
                     task.errors += 1
                     task.save()
                 else:
-                    Log.set(f"[{task.admin}] {len(messages)} message{'s' if len(messages) > 1 else ''} sent to {task.url}")
+                    Log.set(f"[{task.admin}] {count} message{'s' if count > 1 else ''} sent to {task.url}")
 
     except Exception as err:
         task.errors += 1
