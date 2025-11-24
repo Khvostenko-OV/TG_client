@@ -1,4 +1,5 @@
 import asyncio
+import json
 from time import sleep
 from datetime import datetime, timedelta, timezone
 
@@ -12,7 +13,8 @@ from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
 
 from TG_client.settings import Broker
-from TG_client.utils import proxy_check, generate_device_info, sleep_bit
+from TG_client.utils import proxy_check, generate_device_info, sleep_bit, to_dict, message_to_dict, message_is_valid, \
+    erase_file
 from params.models import Log, aconfirm_time
 
 
@@ -59,6 +61,13 @@ class User(models.Model):
     @classmethod
     def get_by_name(cls, name):
         return cls.objects.filter(name=name).first()
+
+    @classmethod
+    def get_active(cls):
+        users = list(cls.objects.exclude(session=""))
+        if not users: return
+        users.sort(key=lambda x: x.tasks.count())
+        return users[0]
 
     @property
     def to_dict(self) -> dict:
@@ -171,6 +180,8 @@ class User(models.Model):
             await Log.aset(f"[{self}] Authorized with session")
             return True
 
+        self.session = ""
+        await self.asave()
         await Log.aset(f"[{self}] Sending SMS request")
         await self.client.send_code_request(self.phone.strip())
 
@@ -265,40 +276,70 @@ class User(models.Model):
 
         return entity
 
-    async def parse_channel(self, chat_id, period=0, limit=1) -> list:
-        if not self.client:
-            await Log.aset(f"[{self}] No connection!")
-            return []
-        dialogs = await self.client.get_dialogs()
-        sleep_bit()
-        for dlg in dialogs:
-            if str(dlg.entity.id) == chat_id:
-                entity = dlg.entity
-                break
-        else:
-            await Log.aset(f"[{self}] is not member of TG-group id={chat_id}")
-            return []
-        if not period:
-            res = await self.client.get_messages(entity, limit=limit)
+    async def parse_channel(self, chat_id, period=0, limit=0, start=0, end=0) -> dict:
+        resp = {"count": 0, "error": ""}
+        count = 0
+        filename = f"{chat_id}_{self.tg_id}.json"
+        messages = []
+        try:
+            if not self.client: raise Exception(f"No connection!")
+            dialogs = await self.client.get_dialogs()
             sleep_bit()
-            return res
+            for dlg in dialogs:
+                if str(dlg.entity.id) == chat_id:
+                    entity = dlg.entity
+                    break
+            else: raise Exception(f"Is not member of TG-group id={chat_id}")
 
-        stop = False
-        since = datetime.now(timezone.utc) - timedelta(hours=period)
-        offset = 0
-        res = []
-        while not stop:
-            get = await self.client.get_messages(entity, limit=100, offset_id=offset)
-            sleep_bit()
-
-            if not get: break
-            if len(get) < 100:
-                stop = True
-
-            offset = get[-1].id
-            if get[-1].date >= since:
-                res += get
+            if period:
+                since = datetime.now(timezone.utc) - timedelta(hours=period)
+                till = datetime.now(timezone.utc)
             else:
-                stop = True
-                res += [m for m in get if m.date >= since]
-        return res
+                since = datetime.fromtimestamp(start, tz=timezone.utc)
+                till = datetime.fromtimestamp(end, tz=timezone.utc) if end else datetime.now(timezone.utc)
+
+            if since > till: raise Exception(f"Bad time interval for parsing {since} > {till}")
+
+            if limit and not period and not start:
+                get = await self.client.get_messages(entity, limit=min(limit, 100))
+                sleep_bit()
+                messages = [message_to_dict(m) for m in get if message_is_valid(m)]
+                if messages:
+                    resp["count"] = len(messages)
+                    resp["messages"] = messages
+                return resp
+
+            stop = False
+            offset = 0
+            print(f"Parsing {chat_id} from {since} till {till}")
+            with open(filename, "w", encoding="utf-8") as file:
+                while not stop:
+                    get = await self.client.get_messages(entity, limit=100, offset_id=offset)
+                    sleep_bit()
+
+                    if not get: break
+                    if len(get) < 100 or get[-1].date < since:
+                        stop = True
+
+                    offset = get[-1].id
+                    l = len(messages)
+                    messages += [
+                        message_to_dict(m)
+                        for m in get
+                        if (since <= m.date <= till) and message_is_valid(m)
+                    ]
+                    count += len(messages) - l
+                    if len(messages) > 100:
+                        for msg in messages:
+                            file.write(json.dumps(msg) + "\n")
+                        messages = []
+        except Exception as err:
+            resp["error"] = str(err)
+
+        if count > 100:
+            resp["filename"] = filename
+        else:
+            resp["messages"] = messages
+            erase_file(filename)
+        resp["count"] = count
+        return resp

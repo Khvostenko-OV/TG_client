@@ -2,6 +2,7 @@
     Utilities
 """
 import json
+import os
 from random import random, randint, choice, uniform
 from time import sleep, time
 from datetime import datetime, timedelta
@@ -35,8 +36,16 @@ def formatted_time(duration=0.0) -> str:
         return f"{hours}h {seconds // 60}min {seconds % 60}sec"
 
 
-def check_time(date, period: int) -> bool:
-    return datetime.utcnow() - datetime.fromisoformat(str(date)) <= timedelta(hours=period)
+# def check_time(date, period: int) -> bool:
+#     return datetime.utcnow() - datetime.fromisoformat(str(date)) <= timedelta(hours=period)
+
+
+def to_int(s):
+    try:
+        num = float(s)
+        return int(num)
+    except ValueError:
+        return None
 
 
 def to_dict(obj) -> dict:
@@ -45,6 +54,16 @@ def to_dict(obj) -> dict:
         for attr in dir(obj)
         if not attr.startswith("_") and not callable(getattr(obj, attr))
     }
+
+
+def erase_file(filename):
+    if not filename: return
+    try:
+        filename = str(filename)
+        if os.path.exists(filename):
+            os.remove(filename)
+    except Exception as e:
+        print(e)
 
 
 def save_json(obj: dict, filename="obj"):
@@ -106,23 +125,62 @@ def message_to_dict(message: Message) -> dict:
     return {attr: str(getattr(message, attr, "None")) for attr in MESSAGE_FIELDS}
 
 
-def send_results(messages: list[Message], url: str) -> str:
-    if not url: return "No endpoint to send results!"
-    if not messages: return "No messages to send!"
+def message_is_valid(message: Message) -> bool:
+    return True
 
+
+def send_results(url: str, messages: list = None, filename: str = "", error: str = "") -> str:
+    result = ""
     try:
-        data = [message_to_dict(m) for m in messages]
+        if not url: raise Exception("No endpoint to send results!")
         hdrs = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             api_header(): api_key(),
         }
-        resp = requests.post(url, data=json.dumps(data), headers=hdrs)
-        resp.raise_for_status()
+        if error:
+            resp = requests.post(url, data={"error": error}, headers=hdrs)
+            resp.raise_for_status()
+
+        if messages is None and not filename: raise Exception("No messages to send!")
+        if messages is not None:
+            resp = requests.post(url, data={"count": len(messages), "messages": json.dumps(messages)}, headers=hdrs)
+            resp.raise_for_status()
+        else:
+            messages = []
+            with open(filename, "r", encoding="utf-8") as f:
+                for line in f:
+                    messages.append(line.rstrip("\n"))
+                    if len(messages) == 100:
+                        resp = requests.post(
+                            url,
+                            data={
+                                "count": len(messages),
+                                "messages": json.dumps(messages),
+                            },
+                            headers=hdrs
+                        )
+
+                        resp.raise_for_status()
+                        messages = []
+
+            if messages:
+                resp = requests.post(
+                    url,
+                    data={
+                        "count": len(messages),
+                        "messages": json.dumps(messages),
+                    },
+                    headers=hdrs
+                )
+                resp.raise_for_status()
+
     except Exception as err:
         print(f"Error: {err}")
-        return str(err)
-    return ""
+        result = str(err)
+
+    erase_file(filename)
+    return result
 
 
 # def manage(message: Message):

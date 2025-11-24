@@ -43,6 +43,42 @@ class TGgroup(models.Model):
     def get_by_name(cls, name):
         return cls.objects.filter(name=name).first()
 
+    async def admin_check(self, admin: User) -> bool:
+        try:
+            if not admin: raise Exception("Group check error: No admin!")
+            if not admin.client: raise Exception(f"[{admin}] Error: No connection!")
+            print("======= Group check")
+            if self.chat_id:
+                dialogs = await admin.client.get_dialogs()
+                sleep_bit()
+                print(f"----- Dialogs - {len(dialogs)}")
+                for dlg in dialogs:
+                    if str(dlg.entity.id) == self.chat_id:
+                        entity = dlg.entity
+                        print(f"[{admin}] already member of '{self}'")
+                        break
+                else:
+                    print(f"[{admin}] is not member of '{self}'")
+                    entity = await admin.join_channel(self.name)
+            else:
+                print(f"[{admin}] is not member of '{self}'")
+                entity = await admin.join_channel(self.name)
+
+            if not entity:
+                raise Exception(f"[{admin}] Error during connecting TG-group '{self}'")
+            else:
+                print(f"===== Got entity id={entity.id}")
+#                save_json(to_dict(entity), str(entity.id))
+                if not self.chat_id or entity.title != self.title:
+                    self.chat_id = str(entity.id)
+                    self.title = entity.title[:256]
+                    await self.asave()
+        except Exception as err:
+            await Log.aset(f"{err}")
+            return False
+
+        return True
+
 
 class Task(models.Model):
     """ Model for tasks
@@ -123,33 +159,36 @@ class Task(models.Model):
         return True
 
     async def groups_check(self) -> int:
-        if not self.admin: raise Exception("No admin!")
-        if not self.admin.client: raise Exception(f"[{self.admin}] No connection!")
         errors = 0
-        print("======= Groups check")
-        dialogs = await self.admin.client.get_dialogs()
-        sleep_bit()
-        print(f"----- Dialogs - {len(dialogs)}")
-        for group in await sync_to_async(list)(self.groups.all()):
-            for dlg in dialogs:
-                if str(dlg.entity.id) == group.chat_id:
-                    entity = dlg.entity
-                    print(f"[{self.admin}] already member of '{group}'")
-                    break
-            else:
-                print(f"[{self.admin}] is not member of '{group}'")
-                entity = await self.admin.join_channel(group.name)
-            if not entity:
-                errors += 1
-                await Log.aset(f"[{self.admin}] Error during connecting TG-group '{group}'")
-            else:
-                print(f"===== Got entity id={entity.id}")
-#                save_json(to_dict(entity), str(entity.id))
-                if not group.chat_id or entity.title != group.title:
-                    group.chat_id = str(entity.id)
-                    group.title = entity.title[:256]
-                    await group.asave()
-
+        try:
+            if not self.admin: raise Exception(f"({self}) Error: No admin!")
+            if not self.admin.client: raise Exception(f"[{self.admin}] Error: No connection!")
+            print("======= Groups check")
+            dialogs = await self.admin.client.get_dialogs()
+            sleep_bit()
+            print(f"----- Dialogs - {len(dialogs)}")
+            for group in await sync_to_async(list)(self.groups.all()):
+                for dlg in dialogs:
+                    if str(dlg.entity.id) == group.chat_id:
+                        entity = dlg.entity
+                        print(f"[{self.admin}] already member of '{group}'")
+                        break
+                else:
+                    print(f"[{self.admin}] is not member of '{group}'")
+                    entity = await self.admin.join_channel(group.name)
+                if not entity:
+                    errors += 1
+                    await Log.aset(f"[{self.admin}] Error during connecting TG-group '{group}'")
+                else:
+                    print(f"===== Got entity id={entity.id}")
+    #                save_json(to_dict(entity), str(entity.id))
+                    if not group.chat_id or entity.title != group.title:
+                        group.chat_id = str(entity.id)
+                        group.title = entity.title[:256]
+                        await group.asave()
+        except Exception as err:
+            await Log.aset(f"{err}")
+            errors += 1
         return errors
 
     def periodic_create(self):

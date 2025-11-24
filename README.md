@@ -48,3 +48,23 @@ Add TG-chats/channels. Enter invite-link or channel's name
 ## Parsing
 
 After starting parser enter confirmation code (once for each TG-user)
+
+# API
+
+## Group parse: /api/group/parse/  : POST
+
+headers: 
+key: X-API-key  | value: api key
+
+body (JSON):
+{
+    link: invite-link or chat-name
+    chat_id: TG chat_id
+    send_result: url to send results of parsing
+    start_time:
+    end_time:
+}
+
+
+
+
