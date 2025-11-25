@@ -134,17 +134,16 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
     try:
         if not url: raise Exception("No endpoint to send results!")
         hdrs = {
-            "Content-Type": "application/json",
             "Accept": "application/json",
             api_header(): api_key(),
         }
         if error:
-            resp = requests.post(url, data={"error": error}, headers=hdrs)
+            resp = requests.post(url, json={"error": error}, headers=hdrs)
             resp.raise_for_status()
 
         if messages is None and not filename: raise Exception("No messages to send!")
         if messages is not None:
-            resp = requests.post(url, data={"count": len(messages), "messages": json.dumps(messages)}, headers=hdrs)
+            resp = requests.post(url, json={"count": len(messages), "messages": messages}, headers=hdrs)
             resp.raise_for_status()
         else:
             messages = []
@@ -154,9 +153,9 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
                     if len(messages) == 100:
                         resp = requests.post(
                             url,
-                            data={
+                            json={
                                 "count": len(messages),
-                                "messages": json.dumps(messages),
+                                "messages": messages,
                             },
                             headers=hdrs
                         )
@@ -167,9 +166,9 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
             if messages:
                 resp = requests.post(
                     url,
-                    data={
+                    json={
                         "count": len(messages),
-                        "messages": json.dumps(messages),
+                        "messages": messages,
                     },
                     headers=hdrs
                 )
