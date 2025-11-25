@@ -93,7 +93,7 @@ def group_parse(request):
         "task": "parsing",
         "chat_name": group.name,
         "chat_id": group.chat_id,
-        "tg_user": str(admin)
+        "tg_user": str(admin),
         },
         headers={api_header(): api_key()}
     )
