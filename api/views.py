@@ -38,7 +38,6 @@ def group_delete(request):
     try:
         if request.method != "POST": raise ApiError("Bad method", 400)
         if request.headers.get(api_header(), "") != api_key(): raise ApiError("Authorization required", 401)
-#        data = json.loads(request.body)
         data = request.json()
         chat_id = data.get("chat_id", "")
         link = data.get("link", "")
