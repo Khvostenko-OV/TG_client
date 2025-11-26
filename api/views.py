@@ -3,6 +3,7 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from TG_client.utils import to_int
 from accounts.models import User
 from api.exceptions import ApiError
 from api.tasks import parsing_group
@@ -37,7 +38,8 @@ def group_delete(request):
     try:
         if request.method != "POST": raise ApiError("Bad method", 400)
         if request.headers.get(api_header(), "") != api_key(): raise ApiError("Authorization required", 401)
-        data = json.loads(request.body)
+#        data = json.loads(request.body)
+        data = request.json()
         chat_id = data.get("chat_id", "")
         link = data.get("link", "")
         if not chat_id and not link: raise ApiError("Bad data. 'chat_id' of 'link' required", 400)
@@ -64,18 +66,20 @@ def group_parse(request):
         if request.method != "POST": raise ApiError("Bad method", 400)
         if request.headers.get(api_header(), "") != api_key(): raise ApiError("Authorization required", 401)
         data = json.loads(request.body)
-        chat_id = data.get("chat_id", "")
-        link = data.get("link", "")
-        if not chat_id and not link: raise ApiError("Bad data. 'chat_id' of 'link' required", 400)
-        url = data.get("send_result", "")
+        chat_id = data.get("chat_id", "").strip()
+        link = data.get("link", "").strip()
+        if not chat_id and not link: raise ApiError("Bad data. 'chat_id' or 'link' required", 400)
+        url = data.get("send_result", "").strip()
         if not url: raise ApiError("Bad data. 'send_result' url required", 400)
-        start = int(data.get("start_time", "0"))
-        end = int(data.get("end_time", "0"))
+        start = to_int(data.get("start_time", "0")) or 0
+        end = to_int(data.get("end_time", "0")) or 0
         if end and start > end: raise ApiError("Bad data. 'start_time' > 'end_time'", 400)
         admin = User.get_active()
         if admin is None: raise ApiError("No active tg-user found")
         if link:
-            group, created = TGgroup.objects.get_or_create(name=link.split("/")[-1].strip(), defaults={"chat_id": chat_id})
+            link = link.split("/")[-1].strip()
+            link = link if link.startswith("+") else link.lower()
+            group, created = TGgroup.objects.get_or_create(name=link, defaults={"chat_id": chat_id})
         else:
             group = TGgroup.get_by_id(chat_id)
         if not group: raise ApiError(f"Group '{chat_id}' not found", 404)

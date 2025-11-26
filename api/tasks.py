@@ -29,22 +29,26 @@ def parsing_group(group_pk: int, admin_pk: int, url: str, start=0, end=0):
 
         future = asyncio.run_coroutine_threadsafe(admin.parse_channel(group.chat_id, start=start, end=end), loop)
         result = future.result()
-        count = result['count']
+        count = result["count"]
         error = result["error"]
-        if error:
-            Log.set(f"API: [{admin}] Error: {error}")
-            error = f"TG-parsing chat '{group}' error: " + error
         Log.set(f"API: [{admin}] parsed messages - {count}")
         if count > 100:
-            res = send_results(url, filename=result["filename"], error=error)
+            err = send_results(url, filename=result["filename"])
         else:
-            res = send_results(url, messages=result["messages"], error=error)
-        if res: raise Exception(f"Can't send results -> {res}")
+            err = send_results(url, messages=result["messages"])
+        if err:
+            Log.set(f"API: [{admin}] Error: Can't send results -> {err}")
         else:
-            Log.set(f"API: [{admin}] {count} message(s) sent to {url}")
+            Log.set(f"API: [{admin}] {count} message{'s' if count != 1 else ''} sent to {url}")
 
     except Exception as err:
-        Log.set(f"API: [{admin}] Error: {err}")
+        error = str(err)
+
+    if error:
+        Log.set(f"API: [{admin}] Error: {error}")
+        err = send_results(url, error=f"TG-parsing chat '{group}' Error: {error}")
+        if err:
+            Log.set(f"API: [{admin}] Error: Can't send error report -> {err}")
 
     future = asyncio.run_coroutine_threadsafe(admin.disconnect(), loop)
     result = future.result()

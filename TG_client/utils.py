@@ -137,15 +137,11 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
             "Accept": "application/json",
             api_header(): api_key(),
         }
-        if error:
-            resp = requests.post(url, json={"error": error}, headers=hdrs)
-            resp.raise_for_status()
 
-        if messages is None and not filename: raise Exception("No messages to send!")
         if messages is not None:
             resp = requests.post(url, json={"count": len(messages), "messages": messages}, headers=hdrs)
             resp.raise_for_status()
-        else:
+        elif filename:
             messages = []
             with open(filename, "r", encoding="utf-8") as f:
                 for line in f:
@@ -153,11 +149,8 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
                     if len(messages) == 100:
                         resp = requests.post(
                             url,
-                            json={
-                                "count": len(messages),
-                                "messages": messages,
-                            },
-                            headers=hdrs
+                            json={"count": len(messages), "messages": messages},
+                            headers=hdrs,
                         )
 
                         resp.raise_for_status()
@@ -166,13 +159,15 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
             if messages:
                 resp = requests.post(
                     url,
-                    json={
-                        "count": len(messages),
-                        "messages": messages,
-                    },
-                    headers=hdrs
+                    json={"count": len(messages), "messages": messages},
+                    headers=hdrs,
                 )
                 resp.raise_for_status()
+
+        if error:
+            resp = requests.post(url, json={"error": error}, headers=hdrs)
+            resp.raise_for_status()
+            print(f"============== Error sent: {error}")
 
     except Exception as err:
         print(f"Error: {err}")
