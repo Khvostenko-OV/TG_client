@@ -33,9 +33,9 @@ def parsing_group(group_pk: int, admin_pk: int, url: str, start=0, end=0):
         error = result["error"]
         Log.set(f"API: [{admin}] parsed messages - {count}")
         if count > 100:
-            err = send_results(url, filename=result["filename"])
+            err = send_results(url, count, filename=result["filename"])
         else:
-            err = send_results(url, messages=result["messages"])
+            err = send_results(url, count, messages=result["messages"])
         if err:
             Log.set(f"API: [{admin}] Error: Can't send results -> {err}")
         else:

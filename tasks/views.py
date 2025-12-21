@@ -20,7 +20,7 @@ def log_view(request):
         if request.POST["action"] == "delete":
             return render(request, "delete.html", {"name": "Log file", "list": [f"logs {Log.count(0)}"]})
         elif request.POST["action"] == "delete_confirm":
-            Log.objects.filter(user_id=0).delete()
+            Log.objects.filter(stream=0).delete()
 
     return render(request, "log.html", {"total": Log.count(), "lines": Log.get(), "menu": 4})
 
