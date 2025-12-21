@@ -66,20 +66,27 @@ def task_run(self, task_pk):
             )
             result = future.result()
             count = result["count"]
+            error = result["error"]
             Log.set(f"[{task.admin}] Received messages - {count}")
             if count:
                 task.found += count
                 task.save()
                 if count > 100:
-                    res = send_results(task.url, filename=result["filename"])
+                    res = send_results(task.url, count, filename=result["filename"])
                 else:
-                    res = send_results(task.url, result["messages"])
+                    res = send_results(task.url, count, messages=result["messages"])
                 if res:
                     Log.set(f"({task}) Error: [{task.admin}] Can't send results -> {res}")
                     task.errors += 1
                     task.save()
                 else:
                     Log.set(f"[{task.admin}] {count} message{'s' if count > 1 else ''} sent to {task.url}")
+
+            if error:
+                Log.set(f"({task}) Error: [{task.admin}] -> {error}")
+                err = send_results(task.url, error=f"TG-parsing chat '{group}' Error: {error}")
+                if err:
+                    Log.set(f"({task}) Error: [{task.admin}] Can't send error report -> {err}")
 
     except Exception as err:
         task.errors += 1

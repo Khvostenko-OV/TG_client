@@ -181,16 +181,16 @@ BIT = 0.1
 CONFIRM_TIME = 180 # seconds
 
 # telegram
-SYS_VER = [
+SYS_VER = (
             "Windows 10",
             "Windows 11",
             "Linux",
             "Arch Linux",
-        ]
+)
 
-LANG_CODE = ["en","ru","de","uk","ua","es","be","id","it","fr","sk","sl","sv","tr"]
+LANG_CODE = ("en","ru","de","uk","ua","es","be","id","it","fr","sk","sl","sv","tr")
 
-MESSAGE_FIELDS = [
+MESSAGE_FIELDS = (
     "chat",
     "chat_id",
     "date",
@@ -233,4 +233,51 @@ MESSAGE_FIELDS = [
     "views",
     "voice",
     "web_preview",
-]
+)
+
+CHANNEL_FIELDS = (
+    "access_hash",
+    "admin_rights",
+    "banned_rights",
+    "bot_verification_icon",
+    "broadcast",
+    "call_active",
+    "call_not_empty",
+    "color",
+    "creator",
+    "date",
+    "default_banned_rights",
+    "emoji_status",
+    "fake",
+    "forum",
+    "gigagroup",
+    "has_geo",
+    "has_link",
+    "id",
+    "join_request",
+    "join_to_send",
+    "left",
+    "level",
+    "megagroup",
+    "min",
+    "noforwards",
+    "participants_count",
+    "photo",
+    "profile_color",
+    "restricted",
+    "restriction_reason",
+    "scam",
+    "send_paid_messages_stars",
+    "signature_profiles",
+    "signatures",
+    "slowmode_enabled",
+    "stories_hidden",
+    "stories_hidden_min",
+    "stories_max_id",
+    "stories_unavailable",
+    "subscription_until_date",
+    "title",
+    "username",
+    "usernames",
+    "verified",
+)

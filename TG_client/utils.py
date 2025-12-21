@@ -129,7 +129,7 @@ def message_is_valid(message: Message) -> bool:
     return True
 
 
-def send_results(url: str, messages: list = None, filename: str = "", error: str = "") -> str:
+def send_results(url: str, count: int = 0, messages: list = None, filename: str = "", error: str = "") -> str:
     result = ""
     try:
         if not url: raise Exception("No endpoint to send results!")
@@ -139,27 +139,29 @@ def send_results(url: str, messages: list = None, filename: str = "", error: str
         }
 
         if messages is not None:
-            resp = requests.post(url, json={"count": len(messages), "messages": messages}, headers=hdrs)
+            resp = requests.post(url, json={"count": count, "messages": messages}, headers=hdrs)
             resp.raise_for_status()
         elif filename:
             messages = []
+            chunk = 0
             with open(filename, "r", encoding="utf-8") as f:
                 for line in f:
                     messages.append(line.rstrip("\n"))
                     if len(messages) == 100:
                         resp = requests.post(
                             url,
-                            json={"count": len(messages), "messages": messages},
+                            json={"count": count, "messages": messages, "chunk": chunk},
                             headers=hdrs,
                         )
 
                         resp.raise_for_status()
                         messages = []
+                        chunk += 1
 
             if messages:
                 resp = requests.post(
                     url,
-                    json={"count": len(messages), "messages": messages},
+                    json={"count": len(messages), "messages": messages, "chunk": chunk},
                     headers=hdrs,
                 )
                 resp.raise_for_status()
