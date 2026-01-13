@@ -3,6 +3,7 @@
 """
 import json
 import os
+import uuid
 from random import random, randint, choice, uniform
 from time import sleep, time
 from datetime import datetime, timedelta
@@ -137,9 +138,10 @@ def send_results(url: str, count: int = 0, messages: list = None, filename: str 
             "Accept": "application/json",
             api_header(): api_key(),
         }
+        uid = str(uuid.uuid4())
 
         if messages is not None:
-            resp = requests.post(url, json={"count": count, "messages": messages}, headers=hdrs)
+            resp = requests.post(url, json={"count": count, "messages": messages, "chunk": 0, "uid": uid}, headers=hdrs)
             resp.raise_for_status()
         elif filename:
             messages = []
@@ -150,7 +152,7 @@ def send_results(url: str, count: int = 0, messages: list = None, filename: str 
                     if len(messages) == 100:
                         resp = requests.post(
                             url,
-                            json={"count": count, "messages": messages, "chunk": chunk},
+                            json={"count": count, "messages": messages, "chunk": chunk, "uid": uid},
                             headers=hdrs,
                         )
 
