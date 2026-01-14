@@ -163,15 +163,14 @@ def send_results(url: str, count: int = 0, messages: list = None, filename: str 
             if messages:
                 resp = requests.post(
                     url,
-                    json={"count": len(messages), "messages": messages, "chunk": chunk},
+                    json={"count": len(messages), "messages": messages, "chunk": chunk, "uid": uid},
                     headers=hdrs,
                 )
                 resp.raise_for_status()
 
         if error:
-            resp = requests.post(url, json={"error": error}, headers=hdrs)
+            resp = requests.post(url, json={"error": error, "uid": uid}, headers=hdrs)
             resp.raise_for_status()
-            print(f"============== Error sent: {error}")
 
     except Exception as err:
         print(f"Error: {err}")
