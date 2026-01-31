@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import requests
 from telethon.tl.patched import Message
 
-from TG_client.settings import BIT, LANG_CODE, SYS_VER, MESSAGE_FIELDS
+from TG_client.settings import BIT, LANG_CODE, SYS_VER, MESSAGE_FIELDS, CHAT_FIELDS
 from params.models import api_header, api_key
 
 
@@ -54,7 +54,7 @@ def to_dict(obj) -> dict:
         attr: str(getattr(obj, attr))
         for attr in dir(obj)
         if not attr.startswith("_") and not callable(getattr(obj, attr))
-    }
+    } if obj else {}
 
 
 def erase_file(filename):
@@ -67,7 +67,7 @@ def erase_file(filename):
         print(e)
 
 
-def save_json(obj: dict, filename="obj"):
+def save_json(obj, filename="obj"):
     with open(filename + ".json", "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=4)
 
@@ -122,15 +122,24 @@ def generate_device_info() -> dict:
     return info
 
 
+def group_to_dict(entity) -> dict:
+    result = {attr: str(getattr(entity, attr, "None")) for attr in CHAT_FIELDS}
+    result["photo"] = to_dict(entity.photo)
+    return result
+
+
 def message_to_dict(message: Message) -> dict:
-    return {attr: str(getattr(message, attr, "None")) for attr in MESSAGE_FIELDS}
+    result = {attr: str(getattr(message, attr, "None")) for attr in MESSAGE_FIELDS}
+    result["photo"] = to_dict(message.photo)
+    result["sender"] = to_dict(message.sender)
+    return result
 
 
 def message_is_valid(message: Message) -> bool:
     return True
 
 
-def send_results(url: str, count: int = 0, messages: list = None, filename: str = "", error: str = "") -> str:
+def send_results(url: str, count: int=0, info: dict=None, messages: list=None, filename: str="", error: str="") -> str:
     result = ""
     try:
         if not url: raise Exception("No endpoint to send results!")
@@ -141,7 +150,14 @@ def send_results(url: str, count: int = 0, messages: list = None, filename: str 
         uid = str(uuid.uuid4())
 
         if messages is not None:
-            resp = requests.post(url, json={"count": count, "messages": messages, "chunk": 0, "uid": uid}, headers=hdrs)
+            # if info:
+            #     save_json(info, str(info["id"]))
+            #     save_json(messages, str(info["id"]) + "_messages")
+            resp = requests.post(
+                url,
+                headers=hdrs,
+                json={"count": count, "group_info": info, "messages": messages, "chunk": 0, "uid": uid},
+            )
             resp.raise_for_status()
         elif filename:
             messages = []
@@ -152,24 +168,24 @@ def send_results(url: str, count: int = 0, messages: list = None, filename: str 
                     if len(messages) == 100:
                         resp = requests.post(
                             url,
-                            json={"count": count, "messages": messages, "chunk": chunk, "uid": uid},
                             headers=hdrs,
+                            json={"count": count, "group_info": info, "messages": messages, "chunk": chunk, "uid": uid},
                         )
-
                         resp.raise_for_status()
                         messages = []
+                        info = {}
                         chunk += 1
 
             if messages:
                 resp = requests.post(
                     url,
-                    json={"count": len(messages), "messages": messages, "chunk": chunk, "uid": uid},
                     headers=hdrs,
+                    json={"count": len(messages), "messages": messages, "chunk": chunk, "uid": uid},
                 )
                 resp.raise_for_status()
 
         if error:
-            resp = requests.post(url, json={"error": error, "uid": uid}, headers=hdrs)
+            resp = requests.post(url, json={"error": error, "group_info": info, "uid": uid}, headers=hdrs)
             resp.raise_for_status()
 
     except Exception as err:

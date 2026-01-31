@@ -9,7 +9,7 @@ from django_celery_beat.models import PeriodicTask, IntervalSchedule
 from TG_client.celery import app
 from TG_client.choices import TaskStatus, TaskAction
 from TG_client.settings import Broker
-from TG_client.utils import sleep_bit
+from TG_client.utils import sleep_bit, group_to_dict
 from accounts.models import User
 from params.models import Log
 
@@ -43,7 +43,8 @@ class TGgroup(models.Model):
     def get_by_name(cls, name):
         return cls.objects.filter(name=name).first()
 
-    async def admin_check(self, admin: User) -> bool:
+    async def admin_check(self, admin: User) -> dict:
+        result = {}
         try:
             if not admin: raise Exception("Group check error: No admin!")
             if not admin.client: raise Exception(f"[{admin}] Error: No connection!")
@@ -69,15 +70,15 @@ class TGgroup(models.Model):
             else:
                 print(f"===== Got entity id={entity.id}")
 #                save_json(to_dict(entity), str(entity.id))
+                result = group_to_dict(entity)
                 if not self.chat_id or entity.title != self.title:
                     self.chat_id = str(entity.id)
                     self.title = entity.title[:256]
                     await self.asave()
         except Exception as err:
             await Log.aset(f"{err}")
-            return False
 
-        return True
+        return result
 
 
 class Task(models.Model):
