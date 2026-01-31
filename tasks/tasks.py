@@ -67,7 +67,7 @@ def task_run(self, task_pk):
             result = future.result()
             count = result["count"]
             error = result["error"]
-            Log.set(f"[{task.admin}] Received messages - {count}")
+            Log.set(f"[{task.admin}] from tg-chat '{group.title}' Received messages - {count}")
             if count:
                 task.found += count
                 task.save()

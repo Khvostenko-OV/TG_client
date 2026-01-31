@@ -191,7 +191,7 @@ SYS_VER = (
 LANG_CODE = ("en","ru","de","uk","ua","es","be","id","it","fr","sk","sl","sv","tr")
 
 MESSAGE_FIELDS = (
-    "chat",
+#    "chat",
     "chat_id",
     "date",
     "edit_date",
@@ -209,9 +209,10 @@ MESSAGE_FIELDS = (
     "is_private",
     "is_reply",
     "legacy",
+#    "media",
     "noforwards",
     "peer_id",
-    "photo",
+#    "photo",
     "pinned",
     "poll",
     "post",
@@ -222,7 +223,7 @@ MESSAGE_FIELDS = (
     "reply_to_chat",
     "reply_to_msg_id",
     "reply_to_sender",
-    "sender",
+#    "sender",
     "sender_id",
     "sticker",
     "to_id",
@@ -235,7 +236,7 @@ MESSAGE_FIELDS = (
     "web_preview",
 )
 
-CHANNEL_FIELDS = (
+CHAT_FIELDS = (
     "access_hash",
     "admin_rights",
     "banned_rights",
@@ -262,7 +263,7 @@ CHANNEL_FIELDS = (
     "min",
     "noforwards",
     "participants_count",
-    "photo",
+#    "photo",
     "profile_color",
     "restricted",
     "restriction_reason",
