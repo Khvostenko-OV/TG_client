@@ -5,16 +5,17 @@ from datetime import datetime, timedelta, timezone
 
 import socks
 from django.db import models
-from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, UserNotParticipantError, ChannelPrivateError, PhoneCodeInvalidError
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import GetParticipantRequest, JoinChannelRequest
+from telethon.tl.functions.chatlists import CheckChatlistInviteRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest
 
 from TG_client.settings import Broker
 from TG_client.utils import proxy_check, generate_device_info, sleep_bit, to_dict, message_to_dict, message_is_valid, \
-    erase_file
+    erase_file, group_to_dict
 from params.models import Log, aconfirm_time
 
 
@@ -342,4 +343,18 @@ class User(models.Model):
             resp["messages"] = messages
             erase_file(filename)
         resp["count"] = count
+        return resp
+
+    async def parse_list(self, link: str) -> dict:
+        resp = {"chats": [], "error": ""}
+        try:
+            if not self.client: raise Exception(f"No connection!")
+            result = await self.client(CheckChatlistInviteRequest(slug=link))
+            if hasattr(result, "chats"):
+                resp["chats"] = [group_to_dict(chat) for chat in result.chats]
+            else:
+                resp["error"] = f"Cant read list of chats from '{link}'"
+        except Exception as err:
+            resp["error"] = str(err)
+
         return resp

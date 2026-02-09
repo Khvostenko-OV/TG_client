@@ -196,6 +196,35 @@ def send_results(url: str, count: int=0, info: dict=None, messages: list=None, f
     return result
 
 
+def send_chats(url: str, chats: list=None, error: str="") -> str:
+    result = ""
+    try:
+        if not url: raise Exception("No endpoint to send results!")
+        hdrs = {
+            "Accept": "application/json",
+            api_header(): api_key(),
+        }
+        uid = str(uuid.uuid4())
+
+        if chats is not None:
+            resp = requests.post(
+                url,
+                headers=hdrs,
+                json={"count": len(chats), "chats": chats, "uid": uid},
+            )
+            resp.raise_for_status()
+
+        if error:
+            resp = requests.post(url, json={"error": error, "uid": uid}, headers=hdrs)
+            resp.raise_for_status()
+
+    except Exception as err:
+        print(f"Error: {err}")
+        result = str(err)
+
+    return result
+
+
 # def manage(message: Message):
 #     sender = message.sender
 #

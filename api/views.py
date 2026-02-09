@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from TG_client.utils import to_int
 from accounts.models import User
 from api.exceptions import ApiError
-from api.tasks import parsing_group
+from api.tasks import parsing_group, parsing_list
 from params.models import api_header, api_key
 from tasks.models import TGgroup
 
@@ -60,45 +60,6 @@ def group_delete(request):
 
 
 @csrf_exempt
-def group_info(request):
-    try:
-        if request.method != "POST": raise ApiError("Bad method", 400)
-        if request.headers.get(api_header(), "") != api_key(): raise ApiError("Authorization required", 401)
-        data = json.loads(request.body)
-        chat_id = data.get("chat_id", "").strip()
-        link = data.get("link", "").strip()
-        if not chat_id and not link: raise ApiError("Bad data. 'chat_id' or 'link' required", 400)
-        url = data.get("send_result", "").strip()
-        if not url: raise ApiError("Bad data. 'send_result' url required", 400)
-        admin = User.get_active()
-        if admin is None: raise ApiError("No active tg-user found")
-        if link:
-            link = link.split("/")[-1].strip()
-            link = link if link.startswith("+") else link.lower()
-            group, created = TGgroup.objects.get_or_create(name=link, defaults={"chat_id": chat_id})
-        else:
-            group = TGgroup.get_by_id(chat_id)
-        if not group: raise ApiError(f"Group '{chat_id}' not found", 404)
-
-    except ApiError as err:
-        return JsonResponse({"error": str(err)}, headers={api_header(): api_key()}, status=err.status)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, headers={api_header(): api_key()}, status=400)
-    except Exception as err:
-        return JsonResponse({"error": str(err)}, headers={api_header(): api_key()}, status=500)
-
-    return JsonResponse(
-        {
-        "task": "parsing",
-        "chat_name": group.name,
-        "chat_id": group.chat_id,
-        "tg_user": str(admin),
-        },
-        headers={api_header(): api_key()}
-    )
-
-
-@csrf_exempt
 def group_parse(request):
     try:
         if request.method != "POST": raise ApiError("Bad method", 400)
@@ -132,10 +93,42 @@ def group_parse(request):
 
     return JsonResponse(
         {
-        "task": "parsing",
-        "chat_name": group.name,
-        "chat_id": group.chat_id,
-        "tg_user": str(admin),
+            "task": "parsing",
+            "chat_name": group.name,
+            "chat_id": group.chat_id,
+            "tg_user": str(admin),
+        },
+        headers={api_header(): api_key()}
+    )
+
+
+@csrf_exempt
+def list_parse(request):
+    try:
+        if request.method != "POST": raise ApiError("Bad method", 400)
+        if request.headers.get(api_header(), "") != api_key(): raise ApiError("Authorization required", 401)
+        data = json.loads(request.body)
+        link = data.get("link", "").strip()
+        if not link: raise ApiError("Bad data. 'link' required", 400)
+        url = data.get("send_result", "").strip()
+        if not url: raise ApiError("Bad data. 'send_result' url required", 400)
+        admin = User.get_active()
+        if admin is None: raise ApiError("No active tg-user found")
+        link = link.split("/")[-1].strip()
+        parsing_list.delay(link, admin.id, url)
+
+    except ApiError as err:
+        return JsonResponse({"error": str(err)}, headers={api_header(): api_key()}, status=err.status)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, headers={api_header(): api_key()}, status=400)
+    except Exception as err:
+        return JsonResponse({"error": str(err)}, headers={api_header(): api_key()}, status=500)
+
+    return JsonResponse(
+        {
+            "task": "invite-list",
+            "link": link,
+            "tg_user": str(admin),
         },
         headers={api_header(): api_key()}
     )

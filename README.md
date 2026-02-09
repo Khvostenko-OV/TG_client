@@ -51,7 +51,7 @@ After starting parser enter confirmation code (once for each TG-user)
 
 # API
 
-## Group parse: /api/group/parse/  : POST
+## Group parsing: /api/group/parse/  : POST
 
 headers: 
 key: X-API-key  | value: api key
@@ -65,6 +65,33 @@ body (JSON):
     end_time:
 }
 
+**Response (JSON):**
+{
+    info: chat-info json
+    count: total number of messages
+    messages: 0-100 chat-messages
+    chunk: number of posting
+    error: error if any
+    uid: uid of task
+}
 
+
+## Invite-list parsing: /api/group/list/  : POST
+
+headers: 
+key: X-API-key  | value: api key
+
+body (JSON):
+{
+    link: link to Telegram invite-list
+    send_result: url to send results of parsing
+}
+
+**Response (JSON):**
+{
+    chats: list of chat-info jsons
+    error: error if any
+    uid: uid of task
+}
 
 
