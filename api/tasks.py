@@ -32,7 +32,7 @@ def parsing_group(group_pk: int, admin_pk: int, url: str, start=0, end=0):
         result = future.result()
         count = result["count"]
         error = result["error"]
-        Log.set(f"API: [{admin}] from tg-chat '{group.title}' parsed messages - {count}")
+        Log.set(f"API: [{admin}] from tg-chat '{group}' parsed messages - {count}")
         if count > 100:
             err = send_results(url, count, info, filename=result["filename"])
         else:
@@ -46,7 +46,7 @@ def parsing_group(group_pk: int, admin_pk: int, url: str, start=0, end=0):
         error = str(err)
 
     if error:
-        Log.set(f"API: [{admin}] parsing tg-chat '{group.title}'. Error: {error}")
+        Log.set(f"API: [{admin}] parsing tg-chat '{group}'. Error: {error}")
         err = send_results(url, info=info, error=f"TG-parsing chat '{group}' Error: {error}")
         if err:
             Log.set(f"API: [{admin}] Error: Can't send error report -> {err}")
